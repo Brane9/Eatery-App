@@ -26,6 +26,12 @@ public class EmailService {
 
     public record SifraObradjena(String email, String korisnickoIme, boolean odobreno) {}
 
+    public record NalogSuspendovan(String email, String korisnickoIme, String prikazIme, String uloga, String doKad) {}
+
+    public record NalogObrisan(String email, String korisnickoIme, String prikazIme, String uloga) {}
+
+    public record NalogSuspenzijaSkinuta(String email, String korisnickoIme, String prikazIme, String uloga) {}
+
     private final ObjectProvider<JavaMailSender> mailSender;
     private final String smtpKorisnik;
     private final String posiljalac;
@@ -116,6 +122,84 @@ public class EmailService {
         }
     }
 
+    @Async
+    public void obavijestiOSuspenziji(NalogSuspendovan d) {
+        try {
+            String ime = nazivNaloga(d.prikazIme(), d.korisnickoIme());
+            String imeHtml = HtmlUtils.htmlEscape(ime);
+            String doKad = d.doKad() != null ? d.doKad() : "";
+            boolean restoran = jeRestoran(d.uloga());
+            String tekst = restoran
+                    ? "administrator je suspendovao nalog restorana \"" + ime + "\" na Eatery platformi do " + doKad + ".\n"
+                    + "Dok traje suspenzija, prijava i upravljanje restoranom nisu mogući.\n"
+                    : "administrator je suspendovao vaš Eatery nalog do " + doKad + ".\n"
+                    + "Dok traje suspenzija, prijava i naručivanje nisu mogući.\n";
+            String html = restoran
+                    ? "<p>administrator je suspendovao nalog restorana <strong>" + imeHtml + "</strong> na Eatery platformi do <strong>"
+                    + HtmlUtils.htmlEscape(doKad) + "</strong>.</p>"
+                    + "<p>Dok traje suspenzija, prijava i upravljanje restoranom nisu mogući.</p>"
+                    : "<p>administrator je suspendovao vaš Eatery nalog do <strong>"
+                    + HtmlUtils.htmlEscape(doKad) + "</strong>.</p>"
+                    + "<p>Dok traje suspenzija, prijava i naručivanje nisu mogući.</p>";
+
+            posalji(d.email(), d.korisnickoIme(), "Vaš Eatery nalog je suspendovan",
+                    "Poštovani,\n\n" + tekst + "\n" + potpis(d.korisnickoIme()),
+                    okvir("Nalog je suspendovan", html, d.korisnickoIme(), false));
+        } catch (Exception e) {
+            log.error("Priprema emaila o suspenziji za {} nije uspjela: {}", d.korisnickoIme(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void obavijestiOBrisanju(NalogObrisan d) {
+        try {
+            String ime = nazivNaloga(d.prikazIme(), d.korisnickoIme());
+            String imeHtml = HtmlUtils.htmlEscape(ime);
+            boolean restoran = jeRestoran(d.uloga());
+            String tekst = restoran
+                    ? "administrator je trajno obrisao nalog restorana \"" + ime + "\" sa Eatery platforme.\n"
+                    + "Prijava više nije moguća.\n"
+                    : "administrator je trajno obrisao vaš Eatery nalog.\n"
+                    + "Prijava više nije moguća.\n";
+            String html = restoran
+                    ? "<p>administrator je trajno obrisao nalog restorana <strong>" + imeHtml + "</strong> sa Eatery platforme.</p>"
+                    + "<p>Prijava više nije moguća.</p>"
+                    : "<p>administrator je trajno obrisao vaš Eatery nalog <strong>" + imeHtml + "</strong>.</p>"
+                    + "<p>Prijava više nije moguća.</p>";
+
+            posalji(d.email(), d.korisnickoIme(), "Vaš Eatery nalog je obrisan",
+                    "Poštovani,\n\n" + tekst + "\n" + potpis(d.korisnickoIme()),
+                    okvir("Nalog je obrisan", html, d.korisnickoIme(), false));
+        } catch (Exception e) {
+            log.error("Priprema emaila o brisanju naloga za {} nije uspjela: {}", d.korisnickoIme(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void obavijestiOSkidanjuSuspenzije(NalogSuspenzijaSkinuta d) {
+        try {
+            String ime = nazivNaloga(d.prikazIme(), d.korisnickoIme());
+            String imeHtml = HtmlUtils.htmlEscape(ime);
+            boolean restoran = jeRestoran(d.uloga());
+            String tekst = restoran
+                    ? "administrator je uklonio suspenziju naloga restorana \"" + ime + "\" na Eatery platformi.\n"
+                    + "Nalog je ponovo aktivan. Prijava i upravljanje restoranom su mogući.\n"
+                    : "administrator je uklonio suspenziju vašeg Eatery naloga.\n"
+                    + "Nalog je ponovo aktivan. Prijava i naručivanje su mogući.\n";
+            String html = restoran
+                    ? "<p>administrator je uklonio suspenziju naloga restorana <strong>" + imeHtml + "</strong> na Eatery platformi.</p>"
+                    + "<p>Nalog je <strong>ponovo aktivan</strong>. Prijava i upravljanje restoranom su mogući.</p>"
+                    : "<p>administrator je uklonio suspenziju vašeg Eatery naloga <strong>" + imeHtml + "</strong>.</p>"
+                    + "<p>Nalog je <strong>ponovo aktivan</strong>. Prijava i naručivanje su mogući.</p>";
+
+            posalji(d.email(), d.korisnickoIme(), "Suspenzija vašeg Eatery naloga je uklonjena",
+                    "Poštovani,\n\n" + tekst + "\n" + potpis(d.korisnickoIme()),
+                    okvir("Nalog je ponovo aktivan", html, d.korisnickoIme(), true));
+        } catch (Exception e) {
+            log.error("Priprema emaila o skidanju suspenzije za {} nije uspjela: {}", d.korisnickoIme(), e.getMessage(), e);
+        }
+    }
+
     private void posalji(String email, String korisnickoIme, String naslov, String tekst, String html) {
         if (email == null || email.isBlank()) {
             log.warn("Email \"{}\" nije poslan: korisnik {} nema email adresu.", naslov, korisnickoIme);
@@ -142,7 +226,15 @@ public class EmailService {
     }
 
     private String nazivZaPoruku(NalogAktiviran d) {
-        return d.nazivObjekta() != null && !d.nazivObjekta().isBlank() ? d.nazivObjekta() : d.korisnickoIme();
+        return nazivNaloga(d.nazivObjekta(), d.korisnickoIme());
+    }
+
+    private String nazivNaloga(String prikazIme, String korisnickoIme) {
+        return prikazIme != null && !prikazIme.isBlank() ? prikazIme : korisnickoIme;
+    }
+
+    private boolean jeRestoran(String uloga) {
+        return uloga != null && "KLIJENT".equalsIgnoreCase(uloga);
     }
 
     private String potpis(String korisnickoIme) {
@@ -152,6 +244,14 @@ public class EmailService {
     }
 
     private String okvir(String naslov, String sadrzaj, String korisnickoIme) {
+        return okvir(naslov, sadrzaj, korisnickoIme, true);
+    }
+
+    private String okvir(String naslov, String sadrzaj, String korisnickoIme, boolean prikaziPrijavu) {
+        String dugme = prikaziPrijavu
+                ? "<p style=\"margin:20px 0\"><a href=\"" + HtmlUtils.htmlEscape(frontendUrl)
+                + "\" style=\"background:#0f766e;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block\">Prijavi se</a></p>"
+                : "";
         return """
                 <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#17201f">
                   <div style="background:#0f766e;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
@@ -160,14 +260,12 @@ public class EmailService {
                   <div style="border:1px solid #e5e9e8;border-top:none;padding:24px;border-radius:0 0 12px 12px">
                     <p>Poštovani,</p>
                     %s
-                    <p style="margin:20px 0">
-                      <a href="%s" style="background:#0f766e;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">Prijavi se</a>
-                    </p>
+                    %s
                     <p style="color:#687573;font-size:13px">Korisničko ime: <strong>%s</strong></p>
                     <p style="color:#687573;font-size:13px">Vaš Eatery tim</p>
                   </div>
                 </div>
-                """.formatted(HtmlUtils.htmlEscape(naslov), sadrzaj,
-                HtmlUtils.htmlEscape(frontendUrl), HtmlUtils.htmlEscape(korisnickoIme));
+                """.formatted(HtmlUtils.htmlEscape(naslov), sadrzaj, dugme,
+                HtmlUtils.htmlEscape(korisnickoIme));
     }
 }

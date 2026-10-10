@@ -2,6 +2,8 @@ package com.eatery.eaterybackend.controller;
 
 import com.eatery.eaterybackend.dto.AdminKorisnikDTO;
 import com.eatery.eaterybackend.dto.AdminOglasDTO;
+import com.eatery.eaterybackend.dto.AdminProfilDTO;
+import com.eatery.eaterybackend.dto.AdminRecenzijaDTO;
 import com.eatery.eaterybackend.dto.AdminSuspenzijaDTO;
 import com.eatery.eaterybackend.dto.AdminZahtjevDTO;
 import com.eatery.eaterybackend.service.AdminService;
@@ -108,5 +110,29 @@ public class AdminController {
     public ResponseEntity<String> obrisiOglas(@PathVariable Long id, Authentication authentication) {
         adminService.requireAdmin(authentication);
         return ResponseEntity.ok(adminService.obrisiOglas(id));
+    }
+
+    @GetMapping("/korisnici/{id}")
+    public ResponseEntity<AdminProfilDTO> getProfil(@PathVariable Long id, Authentication authentication) {
+        adminService.requireAdmin(authentication);
+        return ResponseEntity.ok(adminService.getProfil(id));
+    }
+
+    @DeleteMapping("/korisnici/{id}")
+    public ResponseEntity<String> obrisiNalog(@PathVariable Long id, Authentication authentication) {
+        adminService.requireAdmin(authentication);
+        return ResponseEntity.ok(adminService.obrisiNalog(id, authentication));
+    }
+
+    @GetMapping("/recenzije")
+    public ResponseEntity<List<AdminRecenzijaDTO>> getRecenzije(Authentication authentication) {
+        adminService.requireAdmin(authentication);
+        return ResponseEntity.ok(adminService.getRecenzije());
+    }
+
+    @DeleteMapping("/recenzije/{id}")
+    public ResponseEntity<String> obrisiRecenziju(@PathVariable Long id, Authentication authentication) {
+        adminService.requireAdmin(authentication);
+        return ResponseEntity.ok(adminService.obrisiRecenziju(id));
     }
 }

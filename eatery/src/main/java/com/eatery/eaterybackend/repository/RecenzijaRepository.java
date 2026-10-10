@@ -23,4 +23,19 @@ public interface RecenzijaRepository extends JpaRepository<RecenzijaEntity, Long
 
     // Provjera da li je narudžba već ocjenjena preko njenog ID-a (r.narudzba.id)
     boolean existsByNarudzbaId(Long idNarudzbe);
+
+    @Query("""
+            SELECT r FROM RecenzijaEntity r
+            JOIN FETCH r.kupac
+            JOIN FETCH r.restoran
+            LEFT JOIN FETCH r.narudzba
+            ORDER BY r.id DESC
+            """)
+    List<RecenzijaEntity> findAllZaAdmin();
+
+    void deleteByKupacId(Long kupacId);
+
+    void deleteByRestoranId(Long restoranId);
+
+    void deleteByNarudzbaId(Long narudzbaId);
 }

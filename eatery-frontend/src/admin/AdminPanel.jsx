@@ -29,6 +29,13 @@ function AdminPanel({ user, onLogout }) {
     const [zahtjeviSifraLoading, setZahtjeviSifraLoading] = useState(true);
     const [obradaSifraId, setObradaSifraId] = useState(null);
 
+    const [recenzije, setRecenzije] = useState([]);
+    const [recenzijeLoading, setRecenzijeLoading] = useState(false);
+    const [brisanjeRecenzijeId, setBrisanjeRecenzijeId] = useState(null);
+    const [brisanjeNalogaId, setBrisanjeNalogaId] = useState(null);
+    const [profil, setProfil] = useState(null);
+    const [profilLoading, setProfilLoading] = useState(false);
+
     const ucitajZahtjeve = useCallback(async () => {
         try {
             setZahtjeviLoading(true);
@@ -80,6 +87,19 @@ function AdminPanel({ user, onLogout }) {
         }
     }, [sekcija, pretraga, aktiviranFilter, suspendovanFilter, sort, dir]);
 
+    const ucitajRecenzije = useCallback(async () => {
+        try {
+            setRecenzijeLoading(true);
+            const res = await API.get('/admin/recenzije');
+            setRecenzije(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
+            setPoruka(`Greška: ${porukaGreske}`);
+        } finally {
+            setRecenzijeLoading(false);
+        }
+    }, []);
+
     const ucitajZahtjeveSifra = useCallback(async () => {
         try {
             setZahtjeviSifraLoading(true);
@@ -106,6 +126,12 @@ function AdminPanel({ user, onLogout }) {
             ucitajOglase();
         }
     }, [sekcija, ucitajOglase]);
+
+    useEffect(() => {
+        if (sekcija === 'recenzije') {
+            ucitajRecenzije();
+        }
+    }, [sekcija, ucitajRecenzije]);
 
     useEffect(() => {
         if (sekcija !== 'kupci' && sekcija !== 'klijenti') return undefined;
@@ -157,6 +183,55 @@ function AdminPanel({ user, onLogout }) {
             setPoruka(`Greška: ${porukaGreske}`);
         } finally {
             setAktivacijaId(null);
+        }
+    };
+
+    const otvoriProfil = async (id) => {
+        try {
+            setProfilLoading(true);
+            const res = await API.get(`/admin/korisnici/${id}`);
+            setProfil(res.data);
+        } catch (err) {
+            const porukaGreske = err.response?.data?.message || 'Profil nije mogao biti učitan.';
+            setPoruka(`Greška: ${porukaGreske}`);
+        } finally {
+            setProfilLoading(false);
+        }
+    };
+
+    const obrisiNalog = async (k) => {
+        const ime = k.prikazIme || k.korisnickoIme || k.id;
+        if (!window.confirm(`Obrisati nalog "${ime}"? Radnja se ne može poništiti.`)) {
+            return;
+        }
+        try {
+            setBrisanjeNalogaId(k.id);
+            const res = await API.delete(`/admin/korisnici/${k.id}`);
+            setPoruka(typeof res.data === 'string' ? res.data : 'Nalog je obrisan.');
+            setKorisnici((prev) => prev.filter((x) => x.id !== k.id));
+            if (profil?.id === k.id) setProfil(null);
+        } catch (err) {
+            const porukaGreske = err.response?.data?.message || 'Nalog nije mogao biti obrisan.';
+            setPoruka(`Greška: ${porukaGreske}`);
+        } finally {
+            setBrisanjeNalogaId(null);
+        }
+    };
+
+    const obrisiRecenziju = async (id) => {
+        if (!window.confirm('Obrisati ovu recenziju? Radnja se ne može poništiti.')) {
+            return;
+        }
+        try {
+            setBrisanjeRecenzijeId(id);
+            const res = await API.delete(`/admin/recenzije/${id}`);
+            setPoruka(typeof res.data === 'string' ? res.data : 'Recenzija je obrisana.');
+            setRecenzije((prev) => prev.filter((r) => r.id !== id));
+        } catch (err) {
+            const porukaGreske = err.response?.data?.message || 'Recenzija nije mogla biti obrisana.';
+            setPoruka(`Greška: ${porukaGreske}`);
+        } finally {
+            setBrisanjeRecenzijeId(null);
         }
     };
 
@@ -391,11 +466,11 @@ function AdminPanel({ user, onLogout }) {
         },
         kupci: {
             title: 'Kupci',
-            text: 'Pregled kupaca iz baze. Pretražite, sortirajte, filtrirajte i po potrebi suspendujte nalog.'
+            text: 'Pregled kupaca iz baze. Otvorite profil, suspendujte ili uklonite nalog.'
         },
         klijenti: {
             title: 'Restorani',
-            text: 'Pregled klijenata iz baze. Sortirajte listu, aktivirajte restorane ili suspendujte nalog.'
+            text: 'Pregled klijenata iz baze. Otvorite profil restorana, aktivirajte, suspendujte ili uklonite nalog.'
         },
         sifre: {
             title: 'Zahtjevi za promjenu šifre',
@@ -404,6 +479,10 @@ function AdminPanel({ user, onLogout }) {
         oglasi: {
             title: 'Oglasi',
             text: 'Pregledajte vrećice iznenađenja i uklonite oglase koji krše pravila platforme.'
+        },
+        recenzije: {
+            title: 'Recenzije',
+            text: 'Pregledajte ocjene kupaca i uklonite recenzije koje krše pravila platforme.'
         }
     }[sekcija];
 
@@ -525,13 +604,29 @@ function AdminPanel({ user, onLogout }) {
                             {prikazaniKorisnici.map((k) => (
                                 <tr key={k.id}>
                                     <td>{k.id}</td>
-                                    <td>{k.prikazIme || '—'}</td>
+                                    <td>
+                                        <button type="button" className="admin-name-link" onClick={() => otvoriProfil(k.id)}>
+                                            {k.prikazIme || '—'}
+                                        </button>
+                                    </td>
                                     <td>{k.korisnickoIme}</td>
                                     <td>{k.email}</td>
-                                    {tip === 'klijenti' && <td>{k.adresa || '—'}</td>}
+                                    {tip === 'klijenti' && (
+                                        <td className="admin-cell-address" title={k.adresa || ''}>
+                                            <span>{k.adresa || '—'}</span>
+                                        </td>
+                                    )}
                                     <td>{renderStatus(k)}</td>
-                                    <td>
+                                    <td className="admin-cell-actions">
                                         <div className="admin-actions">
+                                            <button
+                                                className="admin-view"
+                                                type="button"
+                                                disabled={profilLoading}
+                                                onClick={() => otvoriProfil(k.id)}
+                                            >
+                                                Pregled
+                                            </button>
                                             {tip === 'klijenti' && !k.aktiviran && (
                                                 <button
                                                     className="admin-approve"
@@ -561,6 +656,14 @@ function AdminPanel({ user, onLogout }) {
                                                     Suspenduj
                                                 </button>
                                             )}
+                                            <button
+                                                className="admin-reject"
+                                                type="button"
+                                                disabled={brisanjeNalogaId === k.id}
+                                                onClick={() => obrisiNalog(k)}
+                                            >
+                                                {brisanjeNalogaId === k.id ? 'Brisanje...' : 'Obriši'}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -618,6 +721,13 @@ function AdminPanel({ user, onLogout }) {
                             onClick={() => setSekcija('oglasi')}
                         >
                             Oglasi
+                        </button>
+                        <button
+                            type="button"
+                            className={sekcija === 'recenzije' ? 'is-active' : ''}
+                            onClick={() => setSekcija('recenzije')}
+                        >
+                            Recenzije
                         </button>
                     </nav>
                     <div className="admin-user">
@@ -795,6 +905,67 @@ function AdminPanel({ user, onLogout }) {
                 {sekcija === 'kupci' && renderKorisniciTabela('kupci')}
                 {sekcija === 'klijenti' && renderKorisniciTabela('klijenti')}
 
+                {sekcija === 'recenzije' && (
+                    <div className="admin-card">
+                        {recenzijeLoading ? (
+                            <div className="admin-inline-loading">Učitavanje recenzija...</div>
+                        ) : recenzije.length === 0 ? (
+                            <div className="admin-empty">
+                                <h3>Nema recenzija</h3>
+                                <p>Trenutno nema ostavljenih ocjena kupaca.</p>
+                            </div>
+                        ) : (
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ocjena</th>
+                                        <th>Komentar</th>
+                                        <th>Kupac</th>
+                                        <th>Restoran</th>
+                                        <th>Narudžba</th>
+                                        <th>Datum</th>
+                                        <th>Akcije</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recenzije.map((r) => (
+                                        <tr key={r.id}>
+                                            <td>{r.ocjena != null ? `${r.ocjena}/5` : '—'}</td>
+                                            <td>{r.komentar || '—'}</td>
+                                            <td>
+                                                {r.kupacId ? (
+                                                    <button type="button" className="admin-name-link" onClick={() => otvoriProfil(r.kupacId)}>
+                                                        {r.kupac || r.kupacId}
+                                                    </button>
+                                                ) : (r.kupac || '—')}
+                                            </td>
+                                            <td>
+                                                {r.restoranId ? (
+                                                    <button type="button" className="admin-name-link" onClick={() => otvoriProfil(r.restoranId)}>
+                                                        {r.restoran || r.restoranId}
+                                                    </button>
+                                                ) : (r.restoran || '—')}
+                                            </td>
+                                            <td>{r.sifraNarudzbe || r.narudzbaId || '—'}</td>
+                                            <td>{formatDatum(r.datumKreiranja)}</td>
+                                            <td>
+                                                <button
+                                                    className="admin-reject"
+                                                    type="button"
+                                                    disabled={brisanjeRecenzijeId === r.id}
+                                                    onClick={() => obrisiRecenziju(r.id)}
+                                                >
+                                                    {brisanjeRecenzijeId === r.id ? 'Brisanje...' : 'Obriši'}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
+
                 {sekcija === 'oglasi' && (
                     <div className="admin-card">
                         {oglasiLoading ? (
@@ -876,6 +1047,104 @@ function AdminPanel({ user, onLogout }) {
                     </div>
                 )}
             </main>
+
+            {(profil || profilLoading) && (
+                <div className="admin-modal-backdrop" role="presentation" onClick={() => setProfil(null)}>
+                    <div
+                        className="admin-modal admin-modal-wide"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="profil-title"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 id="profil-title">Pregled profila</h2>
+                        {profilLoading || !profil ? (
+                            <p>Učitavanje profila...</p>
+                        ) : (
+                            <>
+                                <p>
+                                    {profil.uloga === 'KLIJENT' ? 'Restoran' : 'Kupac'}:{' '}
+                                    <strong>{profil.prikazIme || profil.korisnickoIme}</strong>
+                                </p>
+                                <dl className="admin-profile-grid">
+                                    <div><dt>ID</dt><dd>{profil.id}</dd></div>
+                                    <div><dt>Korisničko ime</dt><dd>{profil.korisnickoIme || '—'}</dd></div>
+                                    <div><dt>Email</dt><dd>{profil.email || '—'}</dd></div>
+                                    <div>
+                                        <dt>Status</dt>
+                                        <dd>
+                                            {jeSuspendovan(profil)
+                                                ? `Suspendovan do ${formatDatum(profil.suspendovanDo)}`
+                                                : profil.aktiviran
+                                                    ? 'Aktiviran'
+                                                    : 'Neaktiviran'}
+                                        </dd>
+                                    </div>
+                                    {profil.uloga === 'KUPAC' && (
+                                        <>
+                                            <div><dt>Ime i prezime</dt><dd>{profil.ime || 'Nije uneseno'}</dd></div>
+                                            <div><dt>Česti kupac</dt><dd>{profil.cestiKupac ? 'Da' : 'Ne'}</dd></div>
+                                            <div><dt>Popust</dt><dd>{profil.popust != null ? `${profil.popust}%` : '—'}</dd></div>
+                                            <div><dt>Narudžbe</dt><dd>{profil.ukupnoNarudzbi ?? 0}</dd></div>
+                                            <div><dt>Kupljenih vrećica</dt><dd>{profil.ukupnoVrecica ?? 0}</dd></div>
+                                            <div>
+                                                <dt>Ukupna ušteda</dt>
+                                                <dd>{formatCijena(profil.ukupnaUstedaKM)}</dd>
+                                            </div>
+                                        </>
+                                    )}
+                                    {profil.uloga === 'KLIJENT' && (
+                                        <>
+                                            <div><dt>Naziv objekta</dt><dd>{profil.nazivObjekta || '—'}</dd></div>
+                                            <div><dt>Adresa</dt><dd>{profil.adresa || 'Nije unesena'}</dd></div>
+                                            <div>
+                                                <dt>Koordinate</dt>
+                                                <dd>
+                                                    {profil.lat && profil.lng
+                                                        ? `${Number(profil.lat).toFixed(5)}, ${Number(profil.lng).toFixed(5)}`
+                                                        : 'Nisu unesene'}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt>Radno vrijeme</dt>
+                                                <dd>
+                                                    {profil.radnoVrijemeOd || profil.radnoVrijemeDo
+                                                        ? `${profil.radnoVrijemeOd || '—'} – ${profil.radnoVrijemeDo || '—'}`
+                                                        : 'Nije uneseno'}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt>Ocjena kupaca</dt>
+                                                <dd>
+                                                    {profil.ukupanBrojOcjena > 0
+                                                        ? `${Number(profil.prosjecnaOcjena).toFixed(1)} (${profil.ukupanBrojOcjena})`
+                                                        : 'Nema ocjena'}
+                                                </dd>
+                                            </div>
+                                            <div><dt>Narudžbe</dt><dd>{profil.ukupnoNarudzbi ?? 0}</dd></div>
+                                            <div><dt>Jela na meniju</dt><dd>{profil.brojJela ?? 0}</dd></div>
+                                            <div><dt>Oglasi</dt><dd>{profil.brojOglasa ?? 0}</dd></div>
+                                        </>
+                                    )}
+                                </dl>
+                                <div className="admin-actions">
+                                    <button
+                                        className="admin-reject"
+                                        type="button"
+                                        disabled={brisanjeNalogaId === profil.id}
+                                        onClick={() => obrisiNalog(profil)}
+                                    >
+                                        {brisanjeNalogaId === profil.id ? 'Brisanje...' : 'Obriši nalog'}
+                                    </button>
+                                    <button className="admin-logout" type="button" onClick={() => setProfil(null)}>
+                                        Zatvori
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {suspenzijaForma && (
                 <div className="admin-modal-backdrop" role="presentation" onClick={() => setSuspenzijaForma(null)}>
