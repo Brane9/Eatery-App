@@ -101,6 +101,11 @@ public class RecenzijaController {
         return ResponseEntity.ok(recenzijaService.ocjenaZaRestoran(restoran.getId()));
     }
 
+    @GetMapping("/restoran/{idRestorana}")
+    public ResponseEntity<?> getRecenzijeZaRestoran(@PathVariable Long idRestorana) {
+        return ResponseEntity.ok(recenzijaService.recenzijeZaRestoran(idRestorana));
+    }
+
     @GetMapping("/restoran/{idRestorana}/ocjena")
     public ResponseEntity<?> getOcjenaZaRestoran(@PathVariable Long idRestorana) {
         return ResponseEntity.ok(recenzijaService.ocjenaZaRestoran(idRestorana));

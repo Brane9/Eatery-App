@@ -3,6 +3,7 @@ import axios from "axios";
 import "./RestoranPanel.css";
 import "../styles/eatery-styles.css";
 import KlijentProfil from './KlijentProfil';
+import RecenzijeLista from '../components/RecenzijeLista';
 import API from '../api';
 import { pretplatiSeNaTopic, odsviraliObavjestenje } from '../ws';
 import { formatTerminNarudzbe } from '../kupac/radnoVrijeme';
@@ -1247,6 +1248,17 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
                         </article>
 
+                    </div>
+
+                    <div className="analytics-reviews-card">
+                        <div className="analytics-reviews-heading">
+                            <span className="section-label">RECENZIJE KUPACA</span>
+                            <h3>Šta kupci kažu o vama</h3>
+                            <p>Ocjene i komentari koje su kupci ostavili nakon preuzimanja narudžbe.</p>
+                        </div>
+                        {stvarniRestoranId && (
+                            <RecenzijeLista restoranId={stvarniRestoranId} key={statistika.ukupanBrojOcjena} />
+                        )}
                     </div>
 
                 </section>

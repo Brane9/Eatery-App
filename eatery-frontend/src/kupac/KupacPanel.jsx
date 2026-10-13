@@ -9,6 +9,7 @@ import KupacMapa from './KupacMapa';
 import { formatRadnoVrijeme, statusRadnogVremena, statusTerminaNarudzbe, formatTerminNarudzbe } from './radnoVrijeme';
 import { pretplatiSeNaTopic, odsviraliObavjestenje } from '../ws';
 import StarRating from '../components/StarRating';
+import RecenzijeModal from '../components/RecenzijeModal';
 
 // Helper funkcija za pouzdano čitanje ocjene iz bilo koje strukture objekta restorana
 const dohvatiPodatkeOOcjeni = (restoran) => {
@@ -61,6 +62,7 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
     const [poslednjiPin, setPoslednjiPin] = useState(null);
     const [aktivnaStranica, setAktivnaStranica] = useState('restorani');
     const [narudzbaGreska, setNarudzbaGreska] = useState('');
+    const [prikaziRecenzije, setPrikaziRecenzije] = useState(false);
 
     useEffect(() => {
         API.get('/kupac/restorani')
@@ -446,9 +448,14 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                                     <div>
                                         <span className="section-label">MENI RESTORANA</span>
                                         <h2>{nazivRestorana}</h2>
-                                        
-                                        {/* OCJENJIVANJE - ZVJEZDICE I DOKAZI */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+
+                                        <button
+                                            type="button"
+                                            className="ocjena-dugme"
+                                            style={{ marginTop: '6px' }}
+                                            onClick={() => setPrikaziRecenzije(true)}
+                                            title="Pogledaj recenzije kupaca"
+                                        >
                                             <StarRating rating={ocjenaIzabranog.ocjena} readOnly={true} />
                                             <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#111827' }}>
                                                 {ocjenaIzabranog.ocjena > 0 ? ocjenaIzabranog.ocjena.toFixed(1) : 'Nema ocjena'}
@@ -458,7 +465,15 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                                                     ({ocjenaIzabranog.brojOcjena} {ocjenaIzabranog.brojOcjena === 1 ? 'ocjena' : 'ocjena'})
                                                 </span>
                                             )}
-                                        </div>
+                                            <span className="ocjena-dugme-link">Recenzije</span>
+                                        </button>
+                                        {prikaziRecenzije && (
+                                            <RecenzijeModal
+                                                restoranId={izabraniRestoran?.id || izabraniRestoran?.idKorisnika}
+                                                naziv={nazivRestorana}
+                                                onClose={() => setPrikaziRecenzije(false)}
+                                            />
+                                        )}
                                         {statusIzabranog.hours && (
                                             <p className={statusIzabranog.open === false ? 'eatery-status-zatvoren' : 'eatery-status-otvoren'}>
                                                 {statusIzabranog.label} · {statusIzabranog.hours}

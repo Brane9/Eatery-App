@@ -1,0 +1,246 @@
+.recenzije {
+    color: #17201f;
+}
+
+.recenzije-sazetak {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 20px;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #edf0ef;
+}
+
+.recenzije-prosjek {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+}
+
+.recenzije-prosjek strong {
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+.recenzije-prosjek span {
+    color: #687573;
+    font-size: 12px;
+}
+
+.recenzije-raspodjela {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.recenzije-red {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 24px;
+    align-items: center;
+    gap: 8px;
+    color: #687573;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.recenzije-red span:last-child {
+    text-align: right;
+}
+
+.recenzije-traka {
+    height: 7px;
+    border-radius: 999px;
+    background: #edf0ef;
+    overflow: hidden;
+}
+
+.recenzije-traka div {
+    height: 100%;
+    border-radius: 999px;
+    background: #f2b01e;
+}
+
+.recenzije-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.recenzija {
+    padding: 14px 0;
+    border-bottom: 1px solid #edf0ef;
+}
+
+.recenzija:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.recenzija-zaglavlje {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.recenzija-avatar {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #e7f5f3;
+    color: #0f766e;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.recenzija-autor {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.recenzija-autor strong {
+    font-size: 13px;
+}
+
+.recenzija-autor span {
+    color: #94a09e;
+    font-size: 11px;
+}
+
+.recenzija-komentar {
+    margin: 8px 0 0 42px;
+    color: #17201f;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.recenzija-komentar.bez-komentara {
+    color: #94a09e;
+    font-style: italic;
+}
+
+.recenzije-stanje {
+    margin: 16px 0 0;
+    color: #687573;
+    font-size: 13px;
+    text-align: center;
+}
+
+.recenzije-stanje.greska {
+    color: #b91c1c;
+}
+
+.recenzije-modal-pozadina {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(23, 32, 31, 0.45);
+}
+
+.recenzije-modal {
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(23, 32, 31, 0.25);
+    overflow: hidden;
+}
+
+.recenzije-modal-zaglavlje {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 22px 14px;
+    border-bottom: 1px solid #edf0ef;
+}
+
+.recenzije-modal-zaglavlje span {
+    display: block;
+    margin-bottom: 4px;
+    color: #0f766e;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+}
+
+.recenzije-modal-zaglavlje h3 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.recenzije-modal-zaglavlje button {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: 1px solid #e5e9e8;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #687573;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.recenzije-modal-zaglavlje button:hover {
+    border-color: #0f766e;
+    color: #0f766e;
+}
+
+.recenzije-modal-sadrzaj {
+    padding: 18px 22px 22px;
+    overflow-y: auto;
+}
+
+.ocjena-dugme {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 4px 8px;
+    margin-left: -8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ocjena-dugme:hover {
+    background: #f3f6f5;
+}
+
+.ocjena-dugme-link {
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+    .recenzije-sazetak {
+        grid-template-columns: 1fr;
+    }
+}
+
+.map-card-rating.ocjena-dugme {
+    margin-bottom: 9px;
+}

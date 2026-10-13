@@ -14,6 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import './KupacMapa.css';
 import { formatRadnoVrijeme, statusRadnogVremena } from './radnoVrijeme';
 import StarRating from '../components/StarRating';
+import RecenzijeModal from '../components/RecenzijeModal';
 
 // =========================================================
 // MODERNE IKONE
@@ -75,6 +76,7 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
     });
 
     const [restorani, setRestorani] = useState([]);
+    const [recenzijeRestoran, setRecenzijeRestoran] = useState(null);
     const [loadingLokacije, setLoadingLokacije] = useState(true);
     const [loadingRestorana, setLoadingRestorana] = useState(false);
     const [greska, setGreska] = useState('');
@@ -338,7 +340,15 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
             <div className="map-card-info">
                 <h4>{restoran.nazivObjekta || restoran.naziv || 'Restoran'}</h4>
 
-                <div className="map-card-rating">
+                <button
+                    type="button"
+                    className="map-card-rating ocjena-dugme"
+                    title="Pogledaj recenzije kupaca"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setRecenzijeRestoran(restoran);
+                    }}
+                >
                     <StarRating
                         rating={numericRating}
                         readOnly={true}
@@ -350,7 +360,7 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
                               }`
                             : 'Nema ocjena'}
                     </span>
-                </div>
+                </button>
 
                 <p className="map-card-address">
                     <span>📍</span>
@@ -395,6 +405,14 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
 })}
                     </div>
                 </div>
+            )}
+
+            {recenzijeRestoran && (
+                <RecenzijeModal
+                    restoranId={recenzijeRestoran.id}
+                    naziv={recenzijeRestoran.nazivObjekta || recenzijeRestoran.naziv}
+                    onClose={() => setRecenzijeRestoran(null)}
+                />
             )}
         </section>
     );
