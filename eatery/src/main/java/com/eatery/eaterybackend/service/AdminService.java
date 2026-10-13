@@ -324,6 +324,7 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<AdminOglasDTO> getOglase() {
         return vrecicaRepository.findAll().stream()
+                .filter(v -> !Boolean.TRUE.equals(v.getObrisana()))
                 .sorted(Comparator.comparing(VrecicaIznenadjenjaEntity::getId).reversed())
                 .map(this::toOglasDto)
                 .toList();
@@ -375,7 +376,7 @@ public class AdminService {
             dto.setRadnoVrijemeDo(klijent.getRadnoVrijemeDo());
             dto.setUkupnoNarudzbi((long) narudzbaRepository.findByRestoranId(id).size());
             dto.setBrojJela((long) jeloRepository.findByRestoranId(id).size());
-            dto.setBrojOglasa((long) vrecicaRepository.findByRestoranId(id).size());
+            dto.setBrojOglasa((long) vrecicaRepository.findVidljiveByRestoranId(id).size());
             RestoranOcjenaDTO ocjena = recenzijaService.ocjenaZaRestoran(id);
             dto.setProsjecnaOcjena(ocjena.getProsjecnaOcjena());
             dto.setUkupanBrojOcjena(ocjena.getUkupanBrojOcjena());

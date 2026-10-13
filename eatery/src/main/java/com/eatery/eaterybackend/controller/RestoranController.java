@@ -11,7 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -142,6 +144,65 @@ public class RestoranController {
         jelo.setRestoran(restoran);
 
         return ResponseEntity.ok(jeloRepository.save(jelo));
+    }
+
+    @PutMapping("/{restoranId}/jela/{jeloId}")
+    @Transactional
+    public ResponseEntity<?> izmijeniJelo(@PathVariable Long restoranId, @PathVariable Long jeloId,
+                                          @RequestBody JeloDTO dto, Authentication authentication) {
+
+        if (!isRestoranOvlascen(restoranId, authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Nemate dozvolu da mijenjate jela ovog restorana!"));
+        }
+
+        JeloEntity jelo = jeloRepository.findByIdAndRestoranId(jeloId, restoranId).orElse(null);
+        if (jelo == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Jelo nije pronađeno na vašem meniju."));
+        }
+        if (dto.getNaziv() == null || dto.getNaziv().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Naziv jela je obavezan."));
+        }
+        if (dto.getCijena() == null || dto.getCijena().signum() <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Cijena mora biti veća od nule."));
+        }
+        if (dto.getKategorijaId() != null) {
+            KategorijaEntity kat = kategorijaRepository.findById(dto.getKategorijaId()).orElse(null);
+            if (kat == null || kat.getRestoran() == null || !restoranId.equals(kat.getRestoran().getId())) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Izabrana kategorija ne postoji."));
+            }
+            jelo.setKategorija(kat);
+        }
+
+        jelo.setNaziv(dto.getNaziv().trim());
+        jelo.setOpis(dto.getOpis());
+        jelo.setCijena(dto.getCijena());
+
+        return ResponseEntity.ok(jeloRepository.save(jelo));
+    }
+
+    @DeleteMapping("/{restoranId}/jela/{jeloId}")
+    public ResponseEntity<?> ukloniJelo(@PathVariable Long restoranId, @PathVariable Long jeloId,
+                                        Authentication authentication) {
+
+        if (!isRestoranOvlascen(restoranId, authentication)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Nemate dozvolu da uklanjate jela ovog restorana!"));
+        }
+
+        JeloEntity jelo = jeloRepository.findByIdAndRestoranId(jeloId, restoranId).orElse(null);
+        if (jelo == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Jelo nije pronađeno na vašem meniju."));
+        }
+
+        try {
+            jeloRepository.delete(jelo);
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Jelo se ne može ukloniti jer je povezano s drugim podacima u bazi."));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Jelo \"" + jelo.getNaziv() + "\" je uklonjeno sa menija."));
     }
 
     @GetMapping("/{restoranId}/statistika")

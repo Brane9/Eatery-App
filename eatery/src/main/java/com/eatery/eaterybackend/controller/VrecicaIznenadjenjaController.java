@@ -51,7 +51,7 @@ public class VrecicaIznenadjenjaController {
         if (!isRestoranOvlascen(restoranId, authentication)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Nemate dozvolu za uvid u vrećice ovog restorana!");
         }
-        return ResponseEntity.ok(vrecicaRepository.findByRestoranId(restoranId));
+        return ResponseEntity.ok(vrecicaRepository.findVidljiveByRestoranId(restoranId));
     }
 
     // 3. KREIRANJE NOVE VREĆICE IZNENAĐENJA
@@ -75,7 +75,65 @@ public class VrecicaIznenadjenjaController {
 
         VrecicaIznenadjenjaEntity vrecica = new VrecicaIznenadjenjaEntity();
         vrecica.setRestoran(restoran);
-        vrecica.setNaziv(dto.getNaziv());
+        primijeniPodatke(vrecica, dto);
+
+        return ResponseEntity.ok(vrecicaRepository.save(vrecica));
+    }
+
+    // IZMJENA OBJAVLJENE VREĆICE
+    @PutMapping("/{vrecicaId}")
+    public ResponseEntity<?> izmijeniVrecicu(@PathVariable Long vrecicaId,
+                                             @RequestBody VrecicaIznenadjenjaDTO dto,
+                                             Authentication authentication) {
+        VrecicaIznenadjenjaEntity vrecica = vlastitaVrecica(vrecicaId, authentication);
+        if (vrecica == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Vrećica nije pronađena među vašim vrećicama."));
+        }
+
+        String greskaSatnice = preuzimanjeVreciceService.validirajSatnicu(
+                dto.getVrijemePreuzimanjaOd(), dto.getVrijemePreuzimanjaDo());
+        if (greskaSatnice != null) {
+            return ResponseEntity.badRequest().body(Map.of("message", greskaSatnice));
+        }
+        if (dto.getNaziv() == null || dto.getNaziv().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Naziv vrećice je obavezan."));
+        }
+        if (dto.getKolicina() == null || dto.getKolicina() < 0) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Količina ne može biti negativna."));
+        }
+
+        primijeniPodatke(vrecica, dto);
+        return ResponseEntity.ok(vrecicaRepository.save(vrecica));
+    }
+
+    // UKLANJANJE VREĆICE IZ PONUDE
+    @DeleteMapping("/{vrecicaId}")
+    public ResponseEntity<?> ukloniVrecicu(@PathVariable Long vrecicaId, Authentication authentication) {
+        VrecicaIznenadjenjaEntity vrecica = vlastitaVrecica(vrecicaId, authentication);
+        if (vrecica == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Vrećica nije pronađena među vašim vrećicama."));
+        }
+
+        vrecica.setObrisana(true);
+        vrecica.setAktivna(false);
+        vrecicaRepository.save(vrecica);
+
+        return ResponseEntity.ok(Map.of("message", "Vrećica \"" + vrecica.getNaziv() + "\" je uklonjena iz ponude."));
+    }
+
+    private VrecicaIznenadjenjaEntity vlastitaVrecica(Long vrecicaId, Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        VrecicaIznenadjenjaEntity vrecica = vrecicaRepository.findById(vrecicaId).orElse(null);
+        if (vrecica == null || Boolean.TRUE.equals(vrecica.getObrisana()) || vrecica.getRestoran() == null) {
+            return null;
+        }
+        return isRestoranOvlascen(vrecica.getRestoran().getId(), authentication) ? vrecica : null;
+    }
+
+    private void primijeniPodatke(VrecicaIznenadjenjaEntity vrecica, VrecicaIznenadjenjaDTO dto) {
+        vrecica.setNaziv(dto.getNaziv() != null ? dto.getNaziv().trim() : null);
         vrecica.setOpis(dto.getOpis());
         vrecica.setOriginalnaCijena(dto.getOriginalnaCijena());
         vrecica.setAkcijskaCijena(dto.getAkcijskaCijena());
@@ -87,14 +145,16 @@ public class VrecicaIznenadjenjaController {
         );
         vrecica.setVrijemePreuzimanjaOd(preuzimanjeVreciceService.normalizuj(dto.getVrijemePreuzimanjaOd()));
         vrecica.setVrijemePreuzimanjaDo(preuzimanjeVreciceService.normalizuj(dto.getVrijemePreuzimanjaDo()));
-        vrecica.setAktivna(dto.getAktivna() != null ? dto.getAktivna() : true);
+        if (dto.getAktivna() != null) {
+            vrecica.setAktivna(dto.getAktivna());
+        } else if (vrecica.getAktivna() == null) {
+            vrecica.setAktivna(true);
+        }
         vrecica.setAlergijskaUpozorenja(
                 dto.getAlergijskaUpozorenja() != null && !dto.getAlergijskaUpozorenja().isBlank()
                         ? dto.getAlergijskaUpozorenja().trim()
                         : null
         );
-
-        return ResponseEntity.ok(vrecicaRepository.save(vrecica));
     }
 
     // 4. BRZA PROMJENA STATUSA

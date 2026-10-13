@@ -54,6 +54,10 @@ public class VrecicaIznenadjenjaEntity {
     @Column(name = "alergijska_upozorenja", length = 500)
     private String alergijskaUpozorenja;
 
+    // Uklonjena vrećica se ne prikazuje nigdje, ali ostaje u bazi zbog statistike starih narudžbi
+    @Column(name = "obrisana")
+    private Boolean obrisana = false;
+
     @Column(name = "vrijeme_kreiranja")
     private LocalDateTime vrijemeKreiranja;
 

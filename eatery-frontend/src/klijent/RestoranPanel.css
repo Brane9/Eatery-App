@@ -1,9 +1,4 @@
 
-/* =========================================================
-   EATERY - RESTORAN PANEL
-   Vizuelni stil usklađen sa KupacPanel
-   ========================================================= */
-
 .restoran-page {
 
     --primary: #0f766e;
@@ -82,11 +77,6 @@
 
     gap: 30px;
 }
-
-
-/* =========================================================
-   BRAND
-   ========================================================= */
 
 .restoran-brand {
 
@@ -2825,4 +2815,74 @@
 
 .order-info-pickup {
     grid-column: 1 / -1;
+}
+
+
+.item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 9px;
+}
+
+.bag-card-controls .item-actions {
+    margin-top: 0;
+}
+
+.item-action-button {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.item-action-button:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.item-action-button.danger {
+    border-color: #ead1d1;
+    background: #fff6f6;
+    color: #b54848;
+}
+
+.item-action-button.danger:hover {
+    background: #fdeaea;
+    color: #9f3434;
+}
+
+.menu-item-card.is-editing,
+.bag-card.is-editing {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.secondary-button {
+    width: 100%;
+    margin-top: 8px;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.secondary-button:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.bag-create-card,
+.styled-form {
+    scroll-margin-top: 96px;
 }
