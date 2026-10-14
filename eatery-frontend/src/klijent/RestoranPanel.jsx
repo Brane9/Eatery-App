@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./RestoranPanel.css";
 import "../styles/eatery-styles.css";
@@ -49,6 +49,12 @@ const RestoranPanel = ({ restoranId, user, onLogout }) => {
         cijena: "",
         kategorijaId: ""
     });
+
+    // Izmjena postojećeg jela / vrećice koristi iste forme kao dodavanje
+    const [urediJeloId, setUrediJeloId] = useState(null);
+    const [urediVrecicuId, setUrediVrecicuId] = useState(null);
+    const jeloFormaRef = useRef(null);
+    const vrecicaFormaRef = useRef(null);
 
     // =========================================================
     // NOTIFIKACIJE (FEATURE 2) I PIN POTVRDA PREUZIMANJA (FEATURE 1)
@@ -388,35 +394,75 @@ setJela(resJela.data);
             return;
         }
 
+        const podaciJela = {
+            naziv: novoJelo.naziv,
+            opis: novoJelo.opis,
+            cijena: parseFloat(novoJelo.cijena),
+            kategorijaId: parseInt(novoJelo.kategorijaId, 10)
+        };
+
         try {
 
-           await API.post(`/restoran/${stvarniRestoranId}/jela`, {
-    naziv: novoJelo.naziv,
-    opis: novoJelo.opis,
-    cijena: parseFloat(novoJelo.cijena),
-    kategorijaId: parseInt(novoJelo.kategorijaId, 10)
-});
+            if (urediJeloId) {
+                await API.put(`/restoran/${stvarniRestoranId}/jela/${urediJeloId}`, podaciJela);
+                alert("Jelo je uspješno izmijenjeno.");
+            } else {
+                await API.post(`/restoran/${stvarniRestoranId}/jela`, podaciJela);
+                alert("Jelo uspešno dodato na meni!");
+            }
 
-            alert("Jelo uspešno dodato na meni!");
-
-            setNovoJelo({
-                naziv: "",
-                opis: "",
-                cijena: "",
-                kategorijaId:
-                    kategorije[0]?.id || ""
-            });
+            otkaziIzmjenuJela();
 
             ucitajKategorijeIJela();
 
         } catch (err) {
 
             console.error(
-                "Greška pri dodavanju jela:",
+                "Greška pri spremanju jela:",
                 err
             );
 
-            alert("Greška pri dodavanju jela.");
+            alert(
+                err.response?.data?.message ||
+                (urediJeloId ? "Greška pri izmjeni jela." : "Greška pri dodavanju jela.")
+            );
+        }
+    };
+
+    const zapocniIzmjenuJela = (jelo) => {
+        setNovoJelo({
+            naziv: jelo.naziv || "",
+            opis: jelo.opis || "",
+            cijena: jelo.cijena != null ? String(jelo.cijena) : "",
+            kategorijaId: jelo.kategorija?.id || kategorije[0]?.id || ""
+        });
+        setUrediJeloId(jelo.id);
+        jeloFormaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    const otkaziIzmjenuJela = () => {
+        setNovoJelo({
+            naziv: "",
+            opis: "",
+            cijena: "",
+            kategorijaId: kategorije[0]?.id || ""
+        });
+        setUrediJeloId(null);
+    };
+
+    const ukloniJelo = async (jelo) => {
+        if (!window.confirm(`Ukloniti jelo "${jelo.naziv}" sa menija?`)) {
+            return;
+        }
+        try {
+            await API.delete(`/restoran/${stvarniRestoranId}/jela/${jelo.id}`);
+            if (urediJeloId === jelo.id) {
+                otkaziIzmjenuJela();
+            }
+            ucitajKategorijeIJela();
+        } catch (err) {
+            console.error("Greška pri uklanjanju jela:", err);
+            alert(err.response?.data?.message || "Greška pri uklanjanju jela.");
         }
     };
 
@@ -527,27 +573,75 @@ setJela(resJela.data);
 
         try {
 
-            await API.post(`/vrecice/restoran/${stvarniRestoranId}`, payload);
+            if (urediVrecicuId) {
+                await API.put(`/vrecice/${urediVrecicuId}`, payload);
+                alert("Vrećica je uspješno izmijenjena.");
+            } else {
+                await API.post(`/vrecice/restoran/${stvarniRestoranId}`, payload);
+                alert(
+                    "🎉 Vrećica iznenađenja je uspešno kreirana!"
+                );
+            }
 
-            alert(
-                "🎉 Vrećica iznenađenja je uspešno kreirana!"
-            );
-
-            setForma(pocetnaForma);
+            otkaziIzmjenuVrecice();
 
             ucitajVrecice();
 
         } catch (err) {
 
             console.error(
-                "Greška pri kreiranju vrećice:",
+                "Greška pri spremanju vrećice:",
                 err
             );
 
             alert(
                 err.response?.data?.message ||
-                "Greška prilikom kreiranja vrećice."
+                (urediVrecicuId ? "Greška prilikom izmjene vrećice." : "Greška prilikom kreiranja vrećice.")
             );
+        }
+    };
+
+    const zapocniIzmjenuVrecice = (v) => {
+        const sviAlergeni = (v.alergijskaUpozorenja || "")
+            .split(",")
+            .map(a => a.trim())
+            .filter(Boolean);
+
+        setForma({
+            naziv: v.naziv || "",
+            opis: v.opis || "",
+            originalnaCijena: v.originalnaCijena != null ? String(v.originalnaCijena) : "",
+            akcijskaCijena: v.akcijskaCijena != null ? String(v.akcijskaCijena) : "",
+            kolicina: v.kolicina ?? 1,
+            tezinaKg: v.tezinaKg != null ? String(v.tezinaKg) : "1",
+            vrijemePreuzimanjaOd: v.vrijemePreuzimanjaOd || pocetnaForma.vrijemePreuzimanjaOd,
+            vrijemePreuzimanjaDo: v.vrijemePreuzimanjaDo || pocetnaForma.vrijemePreuzimanjaDo,
+            aktivna: v.aktivna !== false,
+            alergije: sviAlergeni.filter(a => ALERGENI.includes(a)),
+            dodatnaAlergija: sviAlergeni.filter(a => !ALERGENI.includes(a)).join(", ")
+        });
+        setUrediVrecicuId(v.id);
+        vrecicaFormaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    const otkaziIzmjenuVrecice = () => {
+        setForma(pocetnaForma);
+        setUrediVrecicuId(null);
+    };
+
+    const ukloniVrecicu = async (v) => {
+        if (!window.confirm(`Ukloniti vrećicu "${v.naziv}" iz ponude? Kupci je više neće vidjeti.`)) {
+            return;
+        }
+        try {
+            await API.delete(`/vrecice/${v.id}`);
+            if (urediVrecicuId === v.id) {
+                otkaziIzmjenuVrecice();
+            }
+            ucitajVrecice();
+        } catch (err) {
+            console.error("Greška pri uklanjanju vrećice:", err);
+            alert(err.response?.data?.message || "Greška pri uklanjanju vrećice.");
         }
     };
 
@@ -1711,12 +1805,13 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 <div>
 
                                     <h3>
-                                        Novo jelo
+                                        {urediJeloId ? "Izmjena jela" : "Novo jelo"}
                                     </h3>
 
                                     <p>
-                                        Dodajte jelo na
-                                        svoj meni.
+                                        {urediJeloId
+                                            ? "Izmijenite podatke i sačuvajte."
+                                            : "Dodajte jelo na svoj meni."}
                                     </p>
 
                                 </div>
@@ -1725,6 +1820,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
 
                             <form
+                                ref={jeloFormaRef}
                                 onSubmit={
                                     handleDodajJelo
                                 }
@@ -1835,9 +1931,19 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                     type="submit"
                                     className="primary-button"
                                 >
-                                    <span>+</span>
-                                    Sačuvaj jelo
+                                    <span>{urediJeloId ? "✓" : "+"}</span>
+                                    {urediJeloId ? "Sačuvaj izmjene" : "Sačuvaj jelo"}
                                 </button>
+
+                                {urediJeloId && (
+                                    <button
+                                        type="button"
+                                        className="secondary-button"
+                                        onClick={otkaziIzmjenuJela}
+                                    >
+                                        Otkaži izmjenu
+                                    </button>
+                                )}
 
                             </form>
 
@@ -1921,7 +2027,11 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 {grupa.jela.map(jelo => (
 
                                     <article
-                                        className="menu-item-card"
+                                        className={
+                                            urediJeloId === jelo.id
+                                                ? "menu-item-card is-editing"
+                                                : "menu-item-card"
+                                        }
                                         key={jelo.id}
                                     >
 
@@ -1954,6 +2064,23 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                                 {jelo.opis ||
                                                     "Ukusno pripremljeno jelo."}
                                             </p>
+
+                                            <div className="item-actions">
+                                                <button
+                                                    type="button"
+                                                    className="item-action-button"
+                                                    onClick={() => zapocniIzmjenuJela(jelo)}
+                                                >
+                                                    Izmijeni
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="item-action-button danger"
+                                                    onClick={() => ukloniJelo(jelo)}
+                                                >
+                                                    Ukloni
+                                                </button>
+                                            </div>
 
                                         </div>
 
@@ -2008,7 +2135,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
                     {/* FORMA */}
 
-                    <div className="bag-create-card">
+                    <div className="bag-create-card" ref={vrecicaFormaRef}>
 
                         <div className="bag-create-intro">
 
@@ -2019,17 +2146,17 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                             <div>
 
                                 <span className="section-label">
-                                    NOVA PONUDA
+                                    {urediVrecicuId ? "IZMJENA PONUDE" : "NOVA PONUDA"}
                                 </span>
 
                                 <h3>
-                                    Objavi vrećicu
+                                    {urediVrecicuId ? "Izmijeni vrećicu" : "Objavi vrećicu"}
                                 </h3>
 
                                 <p>
-                                    Ponudite višak hrane
-                                    kupcima po akcijskoj
-                                    cijeni.
+                                    {urediVrecicuId
+                                        ? "Izmjene odmah vide kupci. Već naručene vrećice zadržavaju svoj termin preuzimanja."
+                                        : "Ponudite višak hrane kupcima po akcijskoj cijeni."}
                                 </p>
 
                             </div>
@@ -2285,9 +2412,19 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 type="submit"
                                 className="primary-button bag-submit"
                             >
-                                <span>🎁</span>
-                                Objavi vrećicu
+                                <span>{urediVrecicuId ? "✓" : "🎁"}</span>
+                                {urediVrecicuId ? "Sačuvaj izmjene" : "Objavi vrećicu"}
                             </button>
+
+                            {urediVrecicuId && (
+                                <button
+                                    type="button"
+                                    className="secondary-button bag-submit"
+                                    onClick={otkaziIzmjenuVrecice}
+                                >
+                                    Otkaži izmjenu
+                                </button>
+                            )}
 
                         </form>
 
@@ -2374,9 +2511,10 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
                                     <article
                                         className={
-                                            v.aktivna
+                                            (v.aktivna
                                                 ? "bag-card"
-                                                : "bag-card inactive"
+                                                : "bag-card inactive") +
+                                            (urediVrecicuId === v.id ? " is-editing" : "")
                                         }
                                         key={v.id}
                                     >
@@ -2525,6 +2663,23 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                                     ? "Deaktiviraj"
                                                     : "Aktiviraj"}
                                             </button>
+
+                                            <div className="item-actions">
+                                                <button
+                                                    type="button"
+                                                    className="item-action-button"
+                                                    onClick={() => zapocniIzmjenuVrecice(v)}
+                                                >
+                                                    Izmijeni
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="item-action-button danger"
+                                                    onClick={() => ukloniVrecicu(v)}
+                                                >
+                                                    Ukloni
+                                                </button>
+                                            </div>
 
                                         </div>
 

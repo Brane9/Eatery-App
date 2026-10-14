@@ -101,7 +101,13 @@ public class NarudzbaController {
         if (dto.getStavke() != null) {
             for (NarudzbaDTO.StavkaDTO sDTO : dto.getStavke()) {
                 if ("VRECICA".equalsIgnoreCase(sDTO.getTipStavke()) && sDTO.getJeloId() != null) {
-                    vrecicaIznenadjenjaRepository.findById(sDTO.getJeloId()).ifPresent(vreciceUNarudzbi::add);
+                    VrecicaIznenadjenjaEntity v = vrecicaIznenadjenjaRepository.findById(sDTO.getJeloId()).orElse(null);
+                    if (v == null || Boolean.TRUE.equals(v.getObrisana()) || !Boolean.TRUE.equals(v.getAktivna())) {
+                        String naziv = v != null ? "\"" + v.getNaziv() + "\" " : "";
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(Map.of("message", "Vrećica " + naziv + "više nije dostupna. Uklonite je iz korpe."));
+                    }
+                    vreciceUNarudzbi.add(v);
                 }
             }
         }
@@ -127,7 +133,6 @@ public class NarudzbaController {
         if (termin != null) {
             narudzba.setPreuzimanjeOd(termin.od());
             narudzba.setPreuzimanjeDo(termin.doVrijeme());
-            // Ako je termin već počeo, kupac to vidi odmah u potvrdi narudžbe, pa se posebno obavještenje ne šalje
             narudzba.setObavijestPreuzimanjaPoslana(termin.jeAktivan(sada));
         }
 
