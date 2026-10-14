@@ -1,169 +1,46 @@
 package com.eatery.eaterybackend.controller;
 
-import com.eatery.eaterybackend.dto.RestoranMapaDTO;
-import com.eatery.eaterybackend.dto.UpdateKlijentProfilDTO;
-import com.eatery.eaterybackend.entity.KorisnikEntity;
-import com.eatery.eaterybackend.entity.KlijentEntity;
-import com.eatery.eaterybackend.repository.KlijentRepository;
-import com.eatery.eaterybackend.repository.KorisnikRepository;
-import com.eatery.eaterybackend.dto.RestoranOcjenaDTO;
-import com.eatery.eaterybackend.service.RecenzijaService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import com.eatery.eaterybackend.dto.UpdateKlijentProfilDTO;
+import com.eatery.eaterybackend.service.RestoranMapaService;
 
 @RestController
 @RequestMapping("/api/restorani")
 @CrossOrigin(origins = "*")
-@RequiredArgsConstructor
 public class RestoranMapaController {
 
-    private final KlijentRepository klijentRepository;
-    private final KorisnikRepository korisnikRepository;
-    private final RecenzijaService recenzijaService;
+    private final RestoranMapaService restoranMapaService;
 
-    private boolean isRestoranOvlascen(Long trazeniRestoranId, Authentication authentication) {
-        if (authentication == null) return false;
-        String ulogovaniUsername = authentication.getName();
-        KorisnikEntity ulogovani = korisnikRepository.findByKorisnickoIme(ulogovaniUsername).orElse(null);
-        return ulogovani != null && ulogovani.getId().equals(trazeniRestoranId);
+    public RestoranMapaController(RestoranMapaService restoranMapaService) {
+        this.restoranMapaService = restoranMapaService;
     }
 
     @PutMapping("/{restoranId}/lokacija")
-    public ResponseEntity<?> azurirajLokacijuRestorana(
-            @PathVariable Long restoranId,
-            @RequestBody UpdateKlijentProfilDTO dto,
-            Authentication authentication) {
-
-        if (!isRestoranOvlascen(restoranId, authentication)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Nemate dozvolu da mijenjate lokaciju ovog restorana!");
-        }
-
-        String adresa = dto.getAdresa();
-        if (adresa == null || adresa.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Adresa ne smije biti prazna.");
-        }
-
-        Double lat = null;
-        Double lng = null;
-
-        if (dto.getLat() != null && dto.getLng() != null) {
-            lat = dto.getLat();
-            lng = dto.getLng();
-        } else {
-            try {
-                RestTemplate restTemplate = new RestTemplate();
-                String url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ba&q="
-                        + URLEncoder.encode(adresa.trim(), StandardCharsets.UTF_8);
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("User-Agent", "EateryApp/1.0 (kontakt@eatery.ba)");
-
-                HttpEntity<String> entity = new HttpEntity<>(headers);
-                ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
-
-                if (response.getBody() != null && !response.getBody().isEmpty()) {
-                    Map<String, Object> prvaLokacija = (Map<String, Object>) response.getBody().get(0);
-                    lat = Double.parseDouble(prvaLokacija.get("lat").toString());
-                    lng = Double.parseDouble(prvaLokacija.get("lon").toString());
-                }
-            } catch (Exception e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Greška pri komunikaciji sa servisom za mape.");
-            }
-        }
-
-        if (lat == null || lng == null) {
-            return ResponseEntity.badRequest()
-                    .body("Unesena adresa nije pronađena na mapi. Molimo unesite tačnu adresu.");
-        }
-
-        int count = klijentRepository.postojiKlijent(restoranId);
-
-        if (count > 0) {
-            klijentRepository.azurirajKlijenta(restoranId, adresa.trim(), lat, lng);
-        } else {
-            klijentRepository.ubaciKlijenta(restoranId, adresa.trim(), lat, lng);
-        }
-
-        return ResponseEntity.ok(Map.of(
-                "poruka", "Lokacija uspješno sačuvana.",
-                "adresa", adresa.trim(),
-                "lat", lat,
-                "lng", lng
-        ));
+    public ResponseEntity<?> azurirajLokacijuRestorana(@PathVariable Long restoranId,
+                                                       @RequestBody UpdateKlijentProfilDTO dto,
+                                                       Authentication authentication) {
+        return ResponseEntity.ok(restoranMapaService.azurirajLokaciju(restoranId, dto, authentication));
     }
 
     @GetMapping("/{restoranId}/lokacija")
     public ResponseEntity<?> getLokacijaRestorana(@PathVariable Long restoranId) {
-        KlijentEntity klijent = klijentRepository.findById(restoranId).orElse(null);
-
-        if (klijent == null) {
-            return ResponseEntity.ok(Map.of(
-                    "adresa", "",
-                    "lat", 0.0,
-                    "lng", 0.0
-            ));
-        }
-
-        return ResponseEntity.ok(Map.of(
-                "adresa", klijent.getAdresa() != null ? klijent.getAdresa() : "",
-                "lat", klijent.getLat() != null ? klijent.getLat() : 0.0,
-                "lng", klijent.getLng() != null ? klijent.getLng() : 0.0
-        ));
+        return ResponseEntity.ok(restoranMapaService.getLokacija(restoranId));
     }
 
     @GetMapping("/u-blizini")
-    public ResponseEntity<List<RestoranMapaDTO>> getRestoraniUBlizini(
-            @RequestParam double lat,
-            @RequestParam double lng,
-            @RequestParam(defaultValue = "5.0") double radijusKm) {
-
-        List<KlijentEntity> sviKlijenti = klijentRepository.findAll();
-        List<RestoranMapaDTO> rezultat = new ArrayList<>();
-
-        for (KlijentEntity r : sviKlijenti) {
-            if (Boolean.TRUE.equals(r.getAktiviran()) && r.getLat() != null && r.getLng() != null) {
-                double dist = izracunajUdaljenostKm(lat, lng, r.getLat(), r.getLng());
-                if (dist <= radijusKm) {
-
-                    RestoranOcjenaDTO ocjena = recenzijaService.ocjenaZaRestoran(r.getId());
-
-                    rezultat.add(new RestoranMapaDTO(
-                            r.getId(),
-                            r.getNazivObjekta(),
-                            r.getAdresa(),
-                            r.getLat(),
-                            r.getLng(),
-                            Math.round(dist * 10.0) / 10.0,
-                            r.getRadnoVrijemeOd(),
-                            r.getRadnoVrijemeDo(),
-                            ocjena.getProsjecnaOcjena(),
-                            ocjena.getUkupanBrojOcjena()
-                    ));
-                }
-            }
-        }
-        return ResponseEntity.ok(rezultat);
-    }
-
-    private double izracunajUdaljenostKm(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371;
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+    public ResponseEntity<?> getRestoraniUBlizini(@RequestParam double lat,
+                                                  @RequestParam double lng,
+                                                  @RequestParam(defaultValue = "5.0") double radijusKm) {
+        return ResponseEntity.ok(restoranMapaService.getRestoraniUBlizini(lat, lng, radijusKm));
     }
 }
