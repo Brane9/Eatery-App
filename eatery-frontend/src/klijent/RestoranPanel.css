@@ -2886,3 +2886,27 @@
 .styled-form {
     scroll-margin-top: 96px;
 }
+
+.analytics-reviews-card {
+    margin-top: 16px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 5px 20px rgba(20, 35, 32, 0.035);
+}
+
+.analytics-reviews-heading {
+    margin-bottom: 18px;
+}
+
+.analytics-reviews-heading h3 {
+    margin: 4px 0 4px;
+    font-size: 17px;
+}
+
+.analytics-reviews-heading p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+}

@@ -33,6 +33,14 @@ public interface RecenzijaRepository extends JpaRepository<RecenzijaEntity, Long
             """)
     List<RecenzijaEntity> findAllZaAdmin();
 
+    @Query("""
+            SELECT r FROM RecenzijaEntity r
+            JOIN FETCH r.kupac
+            WHERE r.restoran.id = :idRestorana
+            ORDER BY r.datumKreiranja DESC, r.id DESC
+            """)
+    List<RecenzijaEntity> findZaPrikazByRestoranId(@Param("idRestorana") Long idRestorana);
+
     void deleteByKupacId(Long kupacId);
 
     void deleteByRestoranId(Long restoranId);
