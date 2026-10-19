@@ -181,3 +181,13 @@
 .klijent-profil-sifra {
     margin-top: 20px;
 }
+
+.klijent-profil { max-width: 900px; padding-top: 4px; }
+.klijent-profil-card { padding: 20px; border-radius: 16px; }
+.klijent-profil-map { height: 330px; }
+
+@media (max-width: 620px) {
+    .klijent-profil-card { padding: 15px; }
+    .klijent-profil-map { height: 280px; }
+}
+

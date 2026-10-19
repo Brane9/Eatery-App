@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import axios from "axios";
 import "./RestoranPanel.css";
 import "../styles/eatery-styles.css";
@@ -7,6 +7,15 @@ import RecenzijeLista from '../components/RecenzijeLista';
 import API from '../api';
 import { pretplatiSeNaTopic, odsviraliObavjestenje } from '../ws';
 import { formatTerminNarudzbe } from '../kupac/radnoVrijeme';
+import { Bell, ChartNoAxesColumn, ChevronRight, CircleX, ClipboardList, Gift, House, Leaf, MapPin, PackageCheck, RefreshCw, Star, Utensils, UserRound } from 'lucide-react';
+
+const normalizujStatusNarudzbe = (status) =>
+    String(status || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+
+const kljucNarudzbe = (narudzba) => {
+    const id = narudzba?.id ?? narudzba?.narudzbaId ?? narudzba?.sifra;
+    return id == null ? null : String(id);
+};
 
 const RestoranPanel = ({ restoranId, user, onLogout }) => {
 
@@ -26,6 +35,9 @@ const RestoranPanel = ({ restoranId, user, onLogout }) => {
 
     const [vrecice, setVrecice] = useState([]);
     const [narudzbe, setNarudzbe] = useState([]);
+    const prethodneNarudzbeRef = useRef(null);
+    const obavijesteneNarudzbeRef = useRef(new Set());
+    const ucitavanjeNarudzbiRef = useRef(false);
 
     const [loading, setLoading] = useState(false);
     const [loadingNarudzbe, setLoadingNarudzbe] = useState(false);
@@ -73,6 +85,21 @@ const RestoranPanel = ({ restoranId, user, onLogout }) => {
 
     const [aktivnaSekcija, setAktivnaSekcija] =
         useState("pocetna");
+    const [fokusNarudzbeId, setFokusNarudzbeId] = useState(null);
+
+    useLayoutEffect(() => {
+        if (aktivnaSekcija === "narudzbe" && fokusNarudzbeId) {
+            document.getElementById(`narudzba-${fokusNarudzbeId}`)?.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+            return;
+        }
+
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+    }, [aktivnaSekcija, fokusNarudzbeId, stranicaNarudzbi]);
 
 
     // =========================================================
@@ -147,27 +174,58 @@ const RestoranPanel = ({ restoranId, user, onLogout }) => {
     // UČITAVANJE NARUDŽBI
     // =========================================================
 
+    const prikaziObavijestZaNoveNarudzbe = (noveNarudzbe) => {
+        const neobavijestene = noveNarudzbe.filter((narudzba) => {
+            const key = kljucNarudzbe(narudzba);
+            return key && !obavijesteneNarudzbeRef.current.has(key);
+        });
+        if (neobavijestene.length === 0) return;
+
+        neobavijestene.forEach((narudzba) => {
+            obavijesteneNarudzbeRef.current.add(kljucNarudzbe(narudzba));
+        });
+        const prikazaneSifre = neobavijestene
+            .map((narudzba) => narudzba.sifra || narudzba.id || narudzba.narudzbaId)
+            .filter(Boolean)
+            .map((sifra) => `#${sifra}`)
+            .join(", ");
+        const broj = neobavijestene.length;
+        setNotifikacija({
+            naslov: broj === 1 ? "Nova narudžba je kreirana" : `${broj} novih narudžbi je kreirano`,
+            tekst: prikazaneSifre || "Provjerite pristigle narudžbe."
+        });
+        odsviraliObavjestenje();
+    };
+
     const ucitajNarudzbe = async () => {
+        if (!stvarniRestoranId || ucitavanjeNarudzbiRef.current) return;
 
-        if (!stvarniRestoranId) return;
-
+        ucitavanjeNarudzbiRef.current = true;
         try {
-
             setLoadingNarudzbe(true);
-
             const res = await API.get(`/restoran/${stvarniRestoranId}/narudzbe`);
+            const osvjezeneNarudzbe = Array.isArray(res.data)
+                ? res.data
+                : Array.isArray(res.data?.narudzbe)
+                    ? res.data.narudzbe
+                    : [];
+            const prethodneNarudzbe = prethodneNarudzbeRef.current;
 
-            setNarudzbe(res.data);
+            if (prethodneNarudzbe) {
+                const prethodniKljucevi = new Set(prethodneNarudzbe.map(kljucNarudzbe).filter(Boolean));
+                const noveNarudzbe = osvjezeneNarudzbe.filter((narudzba) => {
+                    const key = kljucNarudzbe(narudzba);
+                    return key && !prethodniKljucevi.has(key);
+                });
+                prikaziObavijestZaNoveNarudzbe(noveNarudzbe);
+            }
 
+            prethodneNarudzbeRef.current = osvjezeneNarudzbe;
+            setNarudzbe(osvjezeneNarudzbe);
         } catch (err) {
-
-            console.error(
-                "Greška pri učitavanju narudžbi:",
-                err
-            );
-
+            console.error("Greška pri učitavanju narudžbi:", err);
         } finally {
-
+            ucitavanjeNarudzbiRef.current = false;
             setLoadingNarudzbe(false);
         }
     };
@@ -290,14 +348,13 @@ setJela(resJela.data);
         const client = pretplatiSeNaTopic(
             `/topic/restoran/${stvarniRestoranId}`,
             (poruka) => {
-                if (poruka?.tip === "NOVA_NARUDZBA") {
-                    odsviraliObavjestenje();
-
-                    setNotifikacija({
-                        naslov: "🔔 Nova narudžba!",
-                        tekst: `Narudžba ${poruka.sifra || ""} — ${Number(poruka.ukupnaCijena || 0).toFixed(2)} KM`
-                    });
-
+                if (normalizujStatusNarudzbe(poruka?.tip) === "NOVA_NARUDZBA") {
+                    const novaNarudzba = {
+                        id: poruka.narudzbaId ?? poruka.id ?? poruka.sifra,
+                        sifra: poruka.sifra ?? poruka.narudzbaId ?? poruka.id,
+                        ukupnaCijena: poruka.ukupnaCijena ?? poruka.ukupna_cijena
+                    };
+                    prikaziObavijestZaNoveNarudzbe([novaNarudzba]);
                     ucitajNarudzbe();
                     ucitajStatistiku();
                 }
@@ -323,21 +380,23 @@ setJela(resJela.data);
     // NAVIGACIJA
     // =========================================================
 
-    const idiNaSekciju = (sekcija, id) => {
-
+    const idiNaSekciju = (sekcija) => {
         setAktivnaSekcija(sekcija);
-
-        setTimeout(() => {
-
-            document
-                .getElementById(id)
-                ?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-
-        }, 50);
+        if (sekcija === "narudzbe") {
+            setFokusNarudzbeId(null);
+            setStranicaNarudzbi(1);
+        }
     };
+
+    const idiNaNarudzbu = (narudzbaId) => {
+        const indexNarudzbe = narudzbe.findIndex((narudzba) => narudzba.id === narudzbaId);
+        if (indexNarudzbe >= 0) {
+            setStranicaNarudzbi(Math.floor(indexNarudzbe / NARUDZBI_PO_STRANICI) + 1);
+        }
+        setFokusNarudzbeId(narudzbaId);
+        setAktivnaSekcija("narudzbe");
+    };
+
 
 
     // =========================================================
@@ -770,17 +829,43 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
     // BROJ NOVIH NARUDŽBI
     // =========================================================
 
-    const noveNarudzbeBroj =
-        narudzbe.filter(
-            n =>
-                !n.status ||
-                n.status === "ZAPRIMLJENO"
-        ).length;
+    const noveNarudzbeBroj = narudzbe.filter((narudzba) =>
+        ["", "KREIRANA", "ZAPRIMLJENO", "NOVA", "NOVO"].includes(normalizujStatusNarudzbe(narudzba.status))
+    ).length;
+
+    const narudzbeZaPaznju = narudzbe.filter(
+        (narudzba) => !["DOSTAVLJENO", "PREUZETO", "OTKAZANA", "OTKAZANO", "ODBIJENA"].includes(normalizujStatusNarudzbe(narudzba.status))
+    );
+    const prvaNarudzbaZaPaznju = narudzbeZaPaznju[0];
+    const statusPrveNarudzbe = prvaNarudzbaZaPaznju?.status?.toUpperCase();
+    const korakPrveNarudzbe =
+        statusPrveNarudzbe === "U_PRIPREMI" ? 1 :
+        statusPrveNarudzbe === "SPREMNO" ? 2 :
+        statusPrveNarudzbe === "DOSTAVLJENO" || statusPrveNarudzbe === "PREUZETO" ? 3 : 0;
 
     const ukupnoStranicaNarudzbi = Math.max(
         1,
         Math.ceil(narudzbe.length / NARUDZBI_PO_STRANICI)
     );
+
+    const analitikaStatusi = [
+        { label: "Zaprimljene", statuses: ["ZAPRIMLJENO", "KREIRANA"], tone: "received" },
+        { label: "U pripremi", statuses: ["U_PRIPREMI"], tone: "preparing" },
+        { label: "Spremne", statuses: ["SPREMNO"], tone: "ready" },
+        { label: "Realizovane", statuses: ["DOSTAVLJENO", "PREUZETO"], tone: "delivered" },
+        { label: "Otkazane", statuses: ["OTKAZANA", "OTKAZANO", "ODBIJENA"], tone: "cancelled" }
+    ].map((status) => ({
+        ...status,
+        count: narudzbe.filter((narudzba) => status.statuses.includes(normalizujStatusNarudzbe(narudzba.status))).length
+    }));
+    const otkazaniStatusi = ["OTKAZANA", "OTKAZANO", "OTKAZAN", "ODBIJENA", "ODBIJENO", "CANCELLED", "CANCELED", "REJECTED"];
+    const cijeneNeotkazanihNarudzbi = narudzbe
+        .filter((narudzba) => !otkazaniStatusi.includes(normalizujStatusNarudzbe(narudzba.status)))
+        .map((narudzba) => Number(narudzba.ukupnaCijena ?? narudzba.ukupna_cijena ?? narudzba.totalPrice ?? narudzba.ukupno))
+        .filter(Number.isFinite);
+    const prosjecnaVrijednostNarudzbe = cijeneNeotkazanihNarudzbi.length
+        ? cijeneNeotkazanihNarudzbi.reduce((ukupno, cijena) => ukupno + cijena, 0) / cijeneNeotkazanihNarudzbi.length
+        : 0;
 
     const prikazaneNarudzbe = narudzbe.slice(
         (stranicaNarudzbi - 1) * NARUDZBI_PO_STRANICI,
@@ -863,14 +948,15 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 NAVBAR
             ================================================= */}
 
-            <header className="restoran-navbar">
+            <aside className="restoran-navbar" aria-label="Navigacija klijentskog panela">
 
                 <div className="restoran-navbar-inner">
 
 
                     {/* BRAND */}
 
-                    <div
+                    <button
+                        type="button"
                         className="restoran-brand"
                         onClick={() =>
                             idiNaSekciju(
@@ -891,19 +977,22 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                             </div>
 
                             <div className="restoran-brand-subtitle">
-                                Restaurant
+                                KLIJENT PANEL
                             </div>
 
                         </div>
 
-                    </div>
+                    </button>
 
 
                     {/* NAV */}
 
-                    <nav className="restoran-main-nav">
+                    <nav className="restoran-main-nav" aria-label="Glavna navigacija klijentskog panela">
+                        <span className="restoran-nav-caption">UPRAVLJANJE</span>
 
                         <button
+                            type="button"
+                            aria-current={aktivnaSekcija === "pocetna" ? "location" : undefined}
                             className={
                                 aktivnaSekcija === "pocetna"
                                     ? "restoran-nav-link active"
@@ -916,30 +1005,31 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 )
                             }
                         >
-                            <span>⌂</span>
+                            <House aria-hidden="true" />
                             Početna
                         </button>
 
 
                         <button
+                            type="button"
+                            aria-current={aktivnaSekcija === "analitika" ? "location" : undefined}
                             className={
                                 aktivnaSekcija === "analitika"
                                     ? "restoran-nav-link active"
                                     : "restoran-nav-link"
                             }
                             onClick={() =>
-                                idiNaSekciju(
-                                    "analitika",
-                                    "analitika"
-                                )
+idiNaSekciju("analitika")
                             }
                         >
-                            <span>▣</span>
+                            <ChartNoAxesColumn aria-hidden="true" />
                             Analitika
                         </button>
 
 
                         <button
+                            type="button"
+                            aria-current={aktivnaSekcija === "narudzbe" ? "location" : undefined}
                             className={
                                 aktivnaSekcija === "narudzbe"
                                     ? "restoran-nav-link active"
@@ -952,7 +1042,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 )
                             }
                         >
-                            <span>◷</span>
+                            <ClipboardList aria-hidden="true" />
                             Narudžbe
 
                             {noveNarudzbeBroj > 0 && (
@@ -964,6 +1054,8 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
 
                         <button
+                            type="button"
+                            aria-current={aktivnaSekcija === "meni" ? "location" : undefined}
                             className={
                                 aktivnaSekcija === "meni"
                                     ? "restoran-nav-link active"
@@ -976,12 +1068,14 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 )
                             }
                         >
-                            <span>☷</span>
+                            <Utensils aria-hidden="true" />
                             Meni
                         </button>
 
 
                         <button
+                            type="button"
+                            aria-current={aktivnaSekcija === "vrecice" ? "location" : undefined}
                             className={
                                 aktivnaSekcija === "vrecice"
                                     ? "restoran-nav-link active"
@@ -994,11 +1088,13 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 )
                             }
                         >
-                            <span>🎁</span>
+                            <Gift aria-hidden="true" />
                             Vrećice
                         </button>
 
                         <button
+                            type="button"
+                            aria-current={aktivnaSekcija === "profil" ? "location" : undefined}
                             className={
                                 aktivnaSekcija === "profil"
                                     ? "restoran-nav-link active"
@@ -1011,21 +1107,14 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                 )
                             }
                         >
-                            <span>👤</span>
+                            <UserRound aria-hidden="true" />
                             Profil
                         </button>
 
                     </nav>
 
                     <div className="navbar-actions">
-                        <div className="restaurant-id-box">
-                            <span>
-                                Restoran
-                            </span>
-                            <strong>
-                                #{stvarniRestoranId || "—"}
-                            </strong>
-                        </div>
+
                         {onLogout && (
                             <button
                                 className="navbar-logout"
@@ -1039,7 +1128,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
                 </div>
 
-            </header>
+            </aside>
 
 
             {/* =================================================
@@ -1056,88 +1145,160 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 <section
                     className="restaurant-welcome"
                     id="pocetna"
+                    style={{ display: aktivnaSekcija === "pocetna" ? undefined : "none" }}
                 >
 
                     <div>
-
-                        <span className="restaurant-eyebrow">
-                            EATERY RESTORAN
-                        </span>
-
-                        <h1>
-                            Dobrodošli,
-                            <span>
-                                {" "}
-                                {user?.nazivObjekta ||  
-                                user?.korisnickoIme || 
-                                "restorane"}
-                            </span>
-                            !
-                        </h1>
-
-                        <p>
-                            Upravljajte svojim restoranom,
-                            narudžbama, menijem i vrećicama
-                            iznenađenja na jednom mjestu.
-                        </p>
-
+                        <span className="restaurant-eyebrow">Dobrodošli nazad</span>
+                        <h1>{user?.nazivObjekta || user?.korisnickoIme || "Vaš objekat"}</h1>
                     </div>
 
-
-                    <div className="restaurant-stats">
-
-                        <div className="restaurant-mini-stat">
-
-                            <strong>
-                                {noveNarudzbeBroj}
-                            </strong>
-
-                            <span>
-                                nove narudžbe
-                            </span>
-
-                        </div>
-
-
-                        <div className="restaurant-stat-divider" />
-
-
-                        <div className="restaurant-mini-stat">
-
-                            <strong>
-                                {brojJela}
-                            </strong>
-
-                            <span>
-                                jela na meniju
-                            </span>
-
-                        </div>
-
-
-                        <div className="restaurant-stat-divider" />
-
-
-                        <div className="restaurant-mini-stat">
-
-                            <strong>
-                                {brojVrecica}
-                            </strong>
-
-                            <span>
-                                vrećica
-                            </span>
-
-                        </div>
-
+                    <div className="home-header-actions">
+                        <span className="dashboard-live">
+                            <span aria-hidden="true" /> Uživo
+                        </span>
+                        <button
+                            type="button"
+                            className="outline-action home-refresh-button"
+                            onClick={() => {
+                                ucitajNarudzbe();
+                                ucitajStatistiku();
+                                ucitajVrecice();
+                                ucitajKategorijeIJela();
+                            }}
+                            disabled={loadingNarudzbe}
+                        >
+                            <RefreshCw aria-hidden="true" />
+                            {loadingNarudzbe ? "Osvježavanje..." : "Osvježi"}
+                        </button>
                     </div>
 
                 </section>
 
+                <section
+                    className="home-overview"
+                    aria-label="Početni pregled objekta"
+                    style={{ display: aktivnaSekcija === "pocetna" ? undefined : "none" }}
+                >
+                    <div className="home-stats-grid">
+                        <article className="home-stat-card">
+                            <span className="home-stat-icon teal"><PackageCheck aria-hidden="true" /></span>
+                            <span className="home-stat-label">Prodane vrećice</span>
+                            <strong>{statistika.brojProdanihVrecica}</strong>
+                            <p>Iz dostavljenih narudžbi</p>
+                        </article>
+                        <article className="home-stat-card">
+                            <span className="home-stat-icon amber"><Star aria-hidden="true" /></span>
+                            <span className="home-stat-label">Prosječna ocjena</span>
+                            <strong>
+                                {Number(statistika.ukupanBrojOcjena) > 0 || Number(statistika.prosjecnaOcjena) > 0
+                                    ? Number(statistika.prosjecnaOcjena).toFixed(1)
+                                    : "—"}
+                                <small>{Number(statistika.ukupanBrojOcjena) > 0 || Number(statistika.prosjecnaOcjena) > 0 ? " / 5" : ""}</small>
+                            </strong>
+                            <p>{statistika.ukupanBrojOcjena} ocjena kupaca</p>
+                        </article>
+                        <article className="home-stat-card">
+                            <span className="home-stat-icon rose"><CircleX aria-hidden="true" /></span>
+                            <span className="home-stat-label">Otkazane narudžbe</span>
+                            <strong>{statistika.brojOtkazanihNarudzbi}</strong>
+                            <p>Otkazane ili odbijene</p>
+                        </article>
+                        <article className="home-stat-card home-stat-highlight">
+                            <span className="home-stat-icon light"><Leaf aria-hidden="true" /></span>
+                            <span className="home-stat-label">Spašena hrana</span>
+                            <strong>{Number(statistika.kgSpaseneHrane || 0).toFixed(1)}<small> kg</small></strong>
+                            <p>Hrana koja nije završila kao otpad</p>
+                        </article>
+                    </div>
+
+                    <div className="home-dashboard-grid">
+                        <section className="home-dashboard-card attention-card" aria-labelledby="attention-title">
+                            <div className="home-card-heading">
+                                <div>
+                                    <h2 id="attention-title">Zahtijeva pažnju</h2>
+                                    <p aria-live="polite">
+                                        {narudzbeZaPaznju.length === 1
+                                            ? "1 aktivna narudžba"
+                                            : `${narudzbeZaPaznju.length} aktivnih narudžbi`}
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            {prvaNarudzbaZaPaznju ? (
+                                <article className="home-order-preview">
+                                    <div className="home-order-topline">
+                                        <div className="home-order-reference">
+                                            <span>NARUDŽBA</span>
+                                            <strong>#{prvaNarudzbaZaPaznju.id}</strong>
+                                            <span className="home-order-status">{(prvaNarudzbaZaPaznju.status || "Zaprimljeno").replaceAll("_", " ")}</span>
+                                        </div>
+                                        <strong className="home-order-price">{Number(prvaNarudzbaZaPaznju.ukupnaCijena || 0).toFixed(2)} KM</strong>
+                                    </div>
+                                    <div className="home-order-progress" aria-label="Napredak narudžbe">
+                                        {["Zaprimljeno", "U pripremi", "Spremno", "Dostavljeno"].map((korak, index) => (
+                                            <div className={`home-progress-step${index <= korakPrveNarudzbe ? " reached" : ""}${index < korakPrveNarudzbe ? " connected" : ""}${index === korakPrveNarudzbe ? " current" : ""}`} key={korak}>
+                                                <span aria-hidden="true" />
+                                                <small>{korak}</small>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="home-order-bottomline">
+                                        <span><MapPin aria-hidden="true" /> {prvaNarudzbaZaPaznju.adresaDostave || "Adresa nije navedena"}</span>
+                                        <button type="button" onClick={() => idiNaNarudzbu(prvaNarudzbaZaPaznju.id)}>
+                                            Otvori narudžbu <ChevronRight aria-hidden="true" />
+                                        </button>
+                                    </div>
+                                </article>
+                            ) : (
+                                <div className="home-order-empty">
+                                    <PackageCheck aria-hidden="true" />
+                                    <div>
+                                        <strong>Sve je obrađeno</strong>
+                                        <span>Nema aktivnih narudžbi koje čekaju na obradu.</span>
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="home-dashboard-card quick-actions-card" aria-labelledby="quick-actions-title">
+                            <div className="home-card-heading">
+                                <div>
+                                    <h2 id="quick-actions-title">Brze akcije</h2>
+                                    <p>Najčešći zadaci na jedan klik</p>
+                                </div>
+                            </div>
+                            <div className="home-quick-actions">
+                                <button type="button" className="home-quick-action" onClick={() => idiNaSekciju("narudzbe")}>
+                                    <span className="home-action-icon amber"><Bell aria-hidden="true" /></span>
+                                    <span><strong>Nove narudžbe</strong><small>{noveNarudzbeBroj} na obradi</small></span>
+                                    <ChevronRight aria-hidden="true" />
+                                </button>
+                                <button type="button" className="home-quick-action" onClick={() => idiNaSekciju("vrecice")}>
+                                    <span className="home-action-icon teal"><Gift aria-hidden="true" /></span>
+                                    <span><strong>Objavi vrećicu</strong><small>{vrecice.filter((vrecica) => vrecica.aktivna).length} aktivnih ponuda</small></span>
+                                    <ChevronRight aria-hidden="true" />
+                                </button>
+                                <button type="button" className="home-quick-action" onClick={() => idiNaSekciju("meni")}>
+                                    <span className="home-action-icon teal"><Utensils aria-hidden="true" /></span>
+                                    <span><strong>Dodaj jelo</strong><small>{brojJela} jela u {brojKategorija} kategorija</small></span>
+                                    <ChevronRight aria-hidden="true" />
+                                </button>
+                                <button type="button" className="home-quick-action" onClick={() => idiNaSekciju("profil")}>
+                                    <span className="home-action-icon teal"><MapPin aria-hidden="true" /></span>
+                                    <span><strong>Lokacija i radno vrijeme</strong><small>Uredite profil objekta</small></span>
+                                    <ChevronRight aria-hidden="true" />
+                                </button>
+                            </div>
+                        </section>
+                    </div>
+                </section>
 
                 <section
                     className="restaurant-section restaurant-analytics"
                     id="analitika"
+                    style={{ display: aktivnaSekcija === "analitika" ? undefined : "none" }}
                 >
 
                     <div className="restaurant-section-heading">
@@ -1145,17 +1306,15 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                         <div>
 
                             <span className="section-label">
-                                PREGLED POSLOVANJA
+                                IZVJEŠTAJI I UVIDI
                             </span>
 
                             <h2>
-                                Analitika restorana
+                                Analitika narudžbi
                             </h2>
 
                             <p>
-                                Prodane vrećice, ocjene kupaca,
-                                otkazane narudžbe i kilogrami
-                                hrane spašene od bacanja.
+                                Pregledajte prosječnu vrijednost narudžbi, njihov trenutni tok i utiske kupaca.
                             </p>
 
                         </div>
@@ -1163,91 +1322,54 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                     </div>
 
 
-                    <div className="analytics-grid">
-
-                        <article className="analytics-card">
-
-                            <span>
-                                Prodane vrećice
-                            </span>
-
-                            <strong>
-                                {statistika.brojProdanihVrecica}
-                            </strong>
-
-                            <p>
-                                Vrećice iznenađenja iz
-                                dostavljenih narudžbi.
-                            </p>
-
+                    <div className="analytics-overview">
+                        <article className="analytics-revenue-card">
+                            <span className="analytics-card-kicker">PROSJEČNA VRIJEDNOST NARUDŽBE</span>
+                            <strong>{prosjecnaVrijednostNarudzbe.toFixed(2)} <small>KM</small></strong>
+                            <p>Prosjek svih učitanih narudžbi, bez otkazanih i odbijenih</p>
+                            <div className="analytics-revenue-footer">
+                                <span>{cijeneNeotkazanihNarudzbi.length} narudžbi u prosjeku</span>
+                                <span>{analitikaStatusi.find((status) => status.tone === "delivered")?.count || 0} realizovanih</span>
+                            </div>
                         </article>
 
-
-                        <article className="analytics-card">
-
-                            <span>
-                                Prosječna ocjena
-                            </span>
-
-                            <strong>
-                                {Number(statistika.ukupanBrojOcjena) > 0 || Number(statistika.prosjecnaOcjena) > 0
-                                    ? Number(statistika.prosjecnaOcjena).toFixed(1)
-                                    : '—'}
-                                {(Number(statistika.ukupanBrojOcjena) > 0 || Number(statistika.prosjecnaOcjena) > 0) && (
-                                    <small> / 5</small>
-                                )}
-                            </strong>
-
-                            <p>
-                                {Number(statistika.ukupanBrojOcjena) > 0
-                                    ? `Na osnovu ${statistika.ukupanBrojOcjena} ${Number(statistika.ukupanBrojOcjena) === 1 ? 'ocjene kupaca' : 'ocjena kupaca'}.`
-                                    : Number(statistika.prosjecnaOcjena) > 0
-                                        ? 'Prosjek ocjena kupaca.'
-                                        : 'Još nema ocjena od kupaca.'}
-                            </p>
-
+                        <article className="analytics-status-card">
+                            <div className="analytics-status-heading">
+                                <div>
+                                    <h3>Tok narudžbi</h3>
+                                    <p>Raspodjela prema trenutnom statusu</p>
+                                </div>
+                                <span>{narudzbe.length} ukupno</span>
+                            </div>
+                            {narudzbe.length > 0 ? (
+                                <div className="analytics-status-list">
+                                    {analitikaStatusi.map((status) => (
+                                        <div className="analytics-status-row" key={status.tone}>
+                                            <span className={`analytics-status-dot ${status.tone}`} aria-hidden="true" />
+                                            <span className="analytics-status-label">{status.label}</span>
+                                            <div
+                                                className="analytics-status-track"
+                                                role="progressbar"
+                                                aria-label={`${status.label}: ${status.count} narudžbi`}
+                                                aria-valuemin={0}
+                                                aria-valuemax={narudzbe.length}
+                                                aria-valuenow={status.count}
+                                            >
+                                                <span
+                                                    className={`analytics-status-fill ${status.tone}`}
+                                                    style={{ width: `${(status.count / narudzbe.length) * 100}%` }}
+                                                />
+                                            </div>
+                                            <strong>{status.count}</strong>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="analytics-status-empty">
+                                    Narudžbe će se pojaviti ovdje čim stignu prve.
+                                </div>
+                            )}
                         </article>
-
-
-                        <article className="analytics-card">
-
-                            <span>
-                                Otkazane narudžbe
-                            </span>
-
-                            <strong>
-                                {statistika.brojOtkazanihNarudzbi}
-                            </strong>
-
-                            <p>
-                                Narudžbe sa statusom
-                                otkazano ili odbijeno.
-                            </p>
-
-                        </article>
-
-
-                        <article className="analytics-card highlight">
-
-                            <span>
-                                Spašena hrana
-                            </span>
-
-                            <strong>
-                                {Number(
-                                    statistika.kgSpaseneHrane ||
-                                        0
-                                ).toFixed(1)}
-                                <small> kg</small>
-                            </strong>
-
-                            <p>
-                                Težina dostavljenih vrećica
-                                koje nisu završile kao otpad.
-                            </p>
-
-                        </article>
-
                     </div>
 
                     <div className="analytics-reviews-card">
@@ -1264,36 +1386,6 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 </section>
 
 
-                {/* =================================================
-                    DIJAGNOSTIKA
-                ================================================= */}
-
-                {!stvarniRestoranId && (
-
-                    <div className="restaurant-error">
-
-                        <div className="restaurant-error-icon">
-                            !
-                        </div>
-
-                        <div>
-
-                            <strong>
-                                Nije pronađen ID restorana
-                            </strong>
-
-                            <p>
-                                Provjerite da li se
-                                restoranId ili korisnički ID
-                                pravilno prosljeđuje komponenti.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                )}
-
 
                 {/* =================================================
                     NARUDŽBE
@@ -1302,6 +1394,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 <section
                     className="restaurant-section"
                     id="narudzbe"
+                    style={{ display: aktivnaSekcija === "narudzbe" ? undefined : "none" }}
                 >
 
                     <div className="restaurant-section-heading">
@@ -1427,22 +1520,29 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                             <>
                           <div className="orders-list">
     {prikazaneNarudzbe.map((n) => {
-        // Definisanje statusnih varijabli na vrhu petlje
-        const status = n.status?.toUpperCase();
-
-        // Završni statusi - nakon ovih statusa više nema izmjena
-        const jeKrajnjiStatus =
-            status === "DOSTAVLJENO" ||
-            status === "PREUZETO" ||
-            status === "OTKAZANA" ||
-            status === "OTKAZANO" ||
-            status === "ODBIJENA";
+                                        const status = normalizujStatusNarudzbe(n.status);
+        const jeDostavljenaIliPreuzeta = status === "DOSTAVLJENO" || status === "PREUZETO";
+        const jeOtkazana = otkazaniStatusi.includes(status);
+        const jeKrajnjiStatus = jeDostavljenaIliPreuzeta || jeOtkazana;
+        const statusBoja = jeOtkazana
+            ? "cancelled"
+            : jeDostavljenaIliPreuzeta
+                ? "delivered"
+                : status === "U_PRIPREMI"
+                    ? "preparing"
+                    : status === "SPREMNO"
+                        ? "ready"
+                        : "received";
 
         // Ako je narudžba već spremna ili završena, ne može se vraćati na "U pripremi"
         const jeSpremnoIliVise = status === "SPREMNO" || jeKrajnjiStatus;
 
         return (
-            <article className="order-card" key={n.id}>
+                                    <article
+                                        className={`order-card order-card--${statusBoja}${fokusNarudzbeId === n.id ? " attention-target" : ""}`}
+                                        id={`narudzba-${n.id}`}
+                                        key={n.id}
+                                    >
                 {/* ZAGLAVLJE KARTICE */}
                 <div className="order-card-header">
                     <div>
@@ -1451,17 +1551,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                     </div>
 
                     <div
-                        className={`order-status ${
-                            jeKrajnjiStatus && status !== "PREUZETO" && status !== "DOSTAVLJENO"
-                                ? "cancelled"
-                                : !status || status === "ZAPRIMLJENO" || status === "KREIRANA"
-                                ? "received"
-                                : status === "U_PRIPREMI"
-                                ? "preparing"
-                                : status === "SPREMNO"
-                                ? "ready"
-                                : "delivered"
-                        }`}
+                                        className={`order-status ${statusBoja}`}
                     >
                         <span />
                         {n.status || "ZAPRIMLJENO"}
@@ -1597,12 +1687,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 ? "status-button selected cancel"
                 : "status-button cancel"
         }
-        disabled={
-            status === "DOSTAVLJENO" ||
-            status === "OTKAZANA" ||
-            status === "OTKAZANO" ||
-            status === "ODBIJENA"
-        }
+        disabled={jeKrajnjiStatus}
         onClick={() => PromijeniStatusNarudzbe(n.id, "OTKAZANA")}
     >
         Otkaži
@@ -1665,36 +1750,23 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 <section
                     className="restaurant-section"
                     id="meni"
+                    style={{ display: aktivnaSekcija === "meni" ? undefined : "none" }}
                 >
 
-                    <div className="restaurant-section-heading">
-
+                    <div className="menu-page-header">
                         <div>
-
-                            <span className="section-label">
-                                PONUDA RESTORANA
-                            </span>
-
-                            <h2>
-                                Upravljanje menijem
-                            </h2>
-
-                            <p>
-                                Organizujte kategorije i
-                                dodajte nova jela u ponudu.
-                            </p>
-
+                            <h2>Meni</h2>
                         </div>
-
+                        <div className="menu-live-status" aria-label="Meni je uživo">
+                            <span aria-hidden="true" />
+                            Uživo
+                        </div>
                     </div>
 
-
                     <div className="menu-management-grid">
-
-
-                        {/* KATEGORIJA */}
-
-                        <div className="management-card">
+                        <div className="menu-editor-column">
+                            {/* KATEGORIJA */}
+                            <div className="management-card">
 
                             <div className="management-card-heading">
 
@@ -1749,7 +1821,8 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                     className="primary-button"
                                 >
                                     <span>+</span>
-                                    Dodaj kategoriju
+                                    Dodaj
+
                                 </button>
 
                             </form>
@@ -1814,7 +1887,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                     🍽️
                                 </div>
 
-                                <div>
+                                <div className="management-card-heading-copy">
 
                                     <h3>
                                         {urediJeloId ? "Izmjena jela" : "Novo jelo"}
@@ -1827,6 +1900,19 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                     </p>
 
                                 </div>
+
+                                {urediJeloId && (
+                                    <button
+                                        type="button"
+                                        className="menu-new-item-button"
+                                        onClick={() => {
+                                            otkaziIzmjenuJela();
+                                            jeloFormaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                        }}
+                                    >
+                                        + Novo jelo
+                                    </button>
+                                )}
 
                             </div>
 
@@ -1960,47 +2046,16 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                             </form>
 
                         </div>
-
-                    </div>
-
-
-                    {/* POSTOJEĆI MENI */}
-
-                    <div className="existing-menu-card">
-
-                        <div className="existing-menu-heading">
-
-                            <div>
-
-                                <span className="section-label">
-                                    TRENUTNA PONUDA
-                                </span>
-
-                                <h3>
-                                    Postojeći meni
-                                </h3>
-
-                                <p>
-                                    Sva jela koja su trenutno
-                                    dostupna na meniju.
-                                </p>
-
-                            </div>
-
-
-                            <div className="menu-count">
-
-                                <strong>
-                                    {brojJela}
-                                </strong>
-
-                                <span>
-                                    jela
-                                </span>
-
-                            </div>
-
                         </div>
+
+                        {/* POSTOJEĆI MENI */}
+                        <div className="existing-menu-card">
+                            <div className="existing-menu-heading">
+                                <div>
+                                    <h3>Trenutni meni</h3>
+                                    <p>{brojJela} {brojJela === 1 ? "jelo" : "jela"} u {brojKategorija} {brojKategorija === 1 ? "kategoriji" : "kategorija"}</p>
+                                </div>
+                            </div>
 
 
                         {jela.length === 0 ? (
@@ -2047,8 +2102,8 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                                         key={jelo.id}
                                     >
 
-                                        <div className="menu-item-image">
-                                            🍽️
+                                        <div className="menu-item-image" aria-hidden="true">
+                                            {jelo.naziv?.trim()?.charAt(0)?.toLocaleUpperCase("bs-BA") || "J"}
                                         </div>
 
 
@@ -2110,6 +2165,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                         )}
 
                     </div>
+                    </div>
 
                 </section>
 
@@ -2121,6 +2177,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 <section
                     className="restaurant-section"
                     id="vrecice"
+                    style={{ display: aktivnaSekcija === "vrecice" ? undefined : "none" }}
                 >
 
                     <div className="restaurant-section-heading">
@@ -2467,16 +2524,9 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                             </div>
 
 
-                            <div className="menu-count">
-
-                                <strong>
-                                    {brojVrecica}
-                                </strong>
-
-                                <span>
-                                    vrećica
-                                </span>
-
+                            <div className="bag-summary" aria-label="Pregled vrećica">
+                                <span><strong>{vrecice.filter((vrecica) => vrecica.aktivna).length}</strong> Aktivne</span>
+                                <span><strong>{vrecice.filter((vrecica) => !vrecica.aktivna).length}</strong> Neaktivne</span>
                             </div>
 
                         </div>
@@ -2519,7 +2569,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
 
                             <div className="bag-list">
 
-                                {vrecice.map(v => (
+                                {[...vrecice].sort((a, b) => Number(b.aktivna) - Number(a.aktivna)).map(v => (
 
                                     <article
                                         className={
@@ -2710,8 +2760,9 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                 <section
                     className="restaurant-section"
                     id="profil"
+                    style={{ display: aktivnaSekcija === "profil" ? undefined : "none" }}
                 >
-                    <KlijentProfil user={user} />
+                        <KlijentProfil user={user} isActive={aktivnaSekcija === "profil"} />
                 </section>
 
             </main>
@@ -2730,13 +2781,13 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
                     </strong>
 
                     <span>
-                        © 2026 — Vaš restoran, dio bolje priče.
+                        © 2026
                     </span>
 
                 </div>
 
                 <span>
-                    Manje otpada. Više hrane. 🍽️
+                    Manje otpada. Više hrane.
                 </span>
 
             </footer>

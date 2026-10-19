@@ -26,13 +26,17 @@ function jeValidnaKoordinata(vrijednost) {
 }
 
 // Pomoćna komponenta za re-centriranje mape kada se koordinate promijene
-function CentrirajMapu({ lat, lng }) {
+function CentrirajMapu({ lat, lng, isActive }) {
     const map = useMap();
     useEffect(() => {
+        if (!isActive) return;
+        map.invalidateSize();
         if (jeValidnaKoordinata(lat) && jeValidnaKoordinata(lng)) {
             map.setView([lat, lng], 16);
         }
-    }, [lat, lng, map]);
+        const frameId = requestAnimationFrame(() => map.invalidateSize());
+        return () => cancelAnimationFrame(frameId);
+    }, [lat, lng, map, isActive]);
     return null;
 }
 
@@ -46,7 +50,7 @@ function KlikNaMapuHandler({ onSelectCoordinates }) {
     return null;
 }
 
-const KlijentProfil = () => {
+const KlijentProfil = ({ user, isActive = true }) => {
     const [profil, setProfil] = useState({ nazivObjekta: '', adresa: '', lat: 0, lng: 0, radnoVrijemeOd: '', radnoVrijemeDo: '' });
     const [nazivObjekta, setNazivObjekta] = useState('');
     const [novaAdresa, setNovaAdresa] = useState('');
@@ -70,8 +74,9 @@ const KlijentProfil = () => {
             const sacuvano = localStorage.getItem('user') || localStorage.getItem('korisnik');
             if (sacuvano) {
                 korisnikData = JSON.parse(sacuvano);
-                if (isMounted) setKorisnikInfo(korisnikData);
             }
+            korisnikData = user || korisnikData;
+            if (korisnikData && isMounted) setKorisnikInfo(korisnikData);
         } catch (e) {
             console.error("Greška pri čitanju korisnika:", e);
         }
@@ -244,7 +249,8 @@ const KlijentProfil = () => {
         return <div className="klijent-profil-loading">Učitavanje profila...</div>;
     }
 
-    const mapCenter = (jeValidnaKoordinata(profil.lat) && jeValidnaKoordinata(profil.lng))
+    const lokacijaJePostavljena = jeValidnaKoordinata(profil.lat) && jeValidnaKoordinata(profil.lng);
+    const mapCenter = lokacijaJePostavljena
         ? [profil.lat, profil.lng]
         : [44.77218, 17.19100];
 
@@ -252,8 +258,8 @@ const KlijentProfil = () => {
         <div className="klijent-profil">
             <div className="klijent-profil-heading">
                 <span>LOKACIJA I PODACI</span>
-                <h2>Profil restorana</h2>
-                <p>Ažurirajte naziv, lokaciju i radno vrijeme kako bi kupci znali kad je restoran otvoren.</p>
+                <h2>Profil objekta</h2>
+                <p>Ažurirajte naziv, lokaciju i radno vrijeme kako bi kupci znali kada ste otvoreni.</p>
             </div>
 
             <div className="klijent-profil-card">
@@ -282,7 +288,7 @@ const KlijentProfil = () => {
                             type="text"
                             value={nazivObjekta}
                             onChange={(e) => setNazivObjekta(e.target.value)}
-                            placeholder="npr. Restoran Kod Marka"
+                            placeholder="npr. Pekara Sunce"
                         />
                     </div>
 
@@ -318,7 +324,7 @@ const KlijentProfil = () => {
                         </div>
                     </div>
                     <p className="klijent-profil-hint">
-                        Kupci će vidjeti ovo radno vrijeme i da li je restoran trenutno otvoren.
+                        Kupci će vidjeti ovo radno vrijeme i da li je vaš objekat trenutno otvoren.
                     </p>
 
                     {jeValidnaKoordinata(profil.lat) && jeValidnaKoordinata(profil.lng) && (
@@ -339,26 +345,23 @@ const KlijentProfil = () => {
                     Unesite adresu ili kliknite / prevucite pin na mapi.
                 </p>
                 <div className="klijent-profil-map">
-                    <MapContainer center={mapCenter} zoom={15} style={{ height: '100%', width: '100%' }}>
+                    <MapContainer center={mapCenter} zoom={lokacijaJePostavljena ? 16 : 13} style={{ height: '100%', width: '100%' }}>
                         <TileLayer
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-                        <CentrirajMapu lat={profil.lat} lng={profil.lng} />
+                        <CentrirajMapu lat={profil.lat} lng={profil.lng} isActive={isActive} />
                         <KlikNaMapuHandler onSelectCoordinates={handleMapClick} />
 
-                        {(jeValidnaKoordinata(profil.lat) || jeValidnaKoordinata(profil.lng)) && (
+                        {lokacijaJePostavljena && (
                             <Marker
                                 draggable={true}
                                 eventHandlers={eventHandlers}
-                                position={[
-                                    jeValidnaKoordinata(profil.lat) ? profil.lat : 44.77218,
-                                    jeValidnaKoordinata(profil.lng) ? profil.lng : 17.19100
-                                ]}
+                                position={[profil.lat, profil.lng]}
                                 ref={markerRef}
                             >
                                 <Popup>
-                                    <strong>{nazivObjekta || korisnikInfo?.korisnickoIme || 'Restoran'}</strong><br />
+                                    <strong>{nazivObjekta || korisnikInfo?.korisnickoIme || 'Objekat'}</strong><br />
                                     {novaAdresa || 'Izabrana lokacija'}
                                 </Popup>
                             </Marker>
