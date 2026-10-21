@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { User, AtSign, Mail, Pencil, Gift, Wallet, KeyRound, CircleCheck, TriangleAlert, Leaf } from 'lucide-react';
 import API from '../api';
 import PromjenaSifre from '../components/PromjenaSifre';
 import './KupacProfil.css';
+
+const POLJA = [
+    { name: 'ime', label: 'Ime i prezime', Icon: User, type: 'text', autoComplete: 'name' },
+    { name: 'korisnickoIme', label: 'Korisničko ime', Icon: AtSign, type: 'text', autoComplete: 'username' },
+    { name: 'email', label: 'Email', Icon: Mail, type: 'email', autoComplete: 'email' }
+];
 
 function KupacProfil({ kupacId, user, onUserUpdate }) {
     const [profil, setProfil] = useState(null);
@@ -10,6 +17,7 @@ function KupacProfil({ kupacId, user, onUserUpdate }) {
     const [uredi, setUredi] = useState(false);
     const [saving, setSaving] = useState(false);
     const [poruka, setPoruka] = useState('');
+    const [porukaTip, setPorukaTip] = useState('success');
     const [forma, setForma] = useState({
         ime: '',
         email: '',
@@ -70,9 +78,10 @@ function KupacProfil({ kupacId, user, onUserUpdate }) {
         try {
             const res = await API.put(`/kupac/profil/${kupacId}`, forma);
             const updatedData = res.data;
-            
+
             setProfil(updatedData);
             setUredi(false);
+            setPorukaTip('success');
             setPoruka('Profil je uspješno sačuvan.');
 
             const azuriraniUser = {
@@ -81,12 +90,13 @@ function KupacProfil({ kupacId, user, onUserUpdate }) {
                 email: updatedData.email,
                 ime: updatedData.ime
             };
-            
+
             localStorage.setItem('user', JSON.stringify(azuriraniUser));
             if (onUserUpdate) {
                 onUserUpdate(azuriraniUser);
             }
         } catch (err) {
+            setPorukaTip('error');
             setPoruka(
                 err.response?.data?.message ||
                 (typeof err.response?.data === 'string' ? err.response.data : null) ||
@@ -97,12 +107,21 @@ function KupacProfil({ kupacId, user, onUserUpdate }) {
         }
     };
 
+    const zaglavlje = (
+        <div className="page-heading">
+            <span className="section-label">Moj nalog</span>
+            <h1>Moj profil</h1>
+            <p>Pregledajte statistiku i ažurirajte podatke svog Eatery naloga.</p>
+        </div>
+    );
+
     if (loading) {
         return (
             <section className="profile-section" id="profil">
-                <div className="profil-loading">
-                    <div className="profil-loading-icon">◌</div>
-                    <p>Učitavanje profila...</p>
+                {zaglavlje}
+                <div className="profile-layout" aria-busy="true">
+                    <div className="profile-card profile-skeleton tall" />
+                    <div className="profile-card profile-skeleton" />
                 </div>
             </section>
         );
@@ -111,8 +130,9 @@ function KupacProfil({ kupacId, user, onUserUpdate }) {
     if (greska) {
         return (
             <section className="profile-section" id="profil">
-                <div className="profil-error">
-                    <div className="profil-error-icon">!</div>
+                {zaglavlje}
+                <div className="profil-error" role="alert">
+                    <span className="profil-error-icon" aria-hidden="true"><TriangleAlert size={22} /></span>
                     <h3>Profil nije moguće učitati</h3>
                     <p>{String(greska)}</p>
                 </div>
@@ -126,151 +146,138 @@ function KupacProfil({ kupacId, user, onUserUpdate }) {
 
     const ime = profil.ime?.trim() || profil.korisnickoIme || 'Korisnik';
     const korisnickoIme = profil.korisnickoIme || 'korisnik';
-    const email = profil.email || 'Email nije dostupan';
     const inicijal = ime.charAt(0).toUpperCase();
     const brojVrecica = Number(profil.ukupnoVrecica || 0);
     const ukupnaUsteda = Number(profil.ukupnaUstedaKM || 0);
 
+    const vrijednostPolja = (name) => {
+        if (name === 'ime') return profil.ime || 'Nije uneseno';
+        if (name === 'korisnickoIme') return korisnickoIme;
+        return profil.email || 'Email nije dostupan';
+    };
+
     return (
         <section className="profile-section" id="profil">
-            <div className="profile-heading">
-                <span className="section-label">MOJ NALOG</span>
-                <h2>Moj profil</h2>
-                <p>Pregledajte statistiku i ažurirajte podatke svog Eatery naloga.</p>
-            </div>
+            {zaglavlje}
 
             <div className="profile-layout">
-                <div className="profile-card profile-main-card">
-                    <div className="profile-card-header">
-                        <div className="profile-avatar">{inicijal}</div>
-                        <div>
-                            <span className="profile-label">Kupac</span>
-                            <h3>{ime}</h3>
-                            <p>@{korisnickoIme}</p>
-                        </div>
-                    </div>
+                <aside className="profile-card profile-summary">
+                    <div className="profile-summary-cover" aria-hidden="true" />
+                    <div className="profile-avatar" aria-hidden="true">{inicijal}</div>
+                    <h2>{ime}</h2>
+                    <p className="profile-handle">@{korisnickoIme}</p>
+                    <span className="profile-role">Kupac</span>
 
-                    <div className="profile-info-list">
-                        <div className="profile-info-row">
-                            <div className="profile-info-icon">👤</div>
-                            <div>
-                                <span className="profile-info-label">Ime i prezime</span>
-                                <strong>{profil.ime || 'Nije uneseno'}</strong>
-                            </div>
-                        </div>
-                        <div className="profile-info-row">
-                            <div className="profile-info-icon">@</div>
-                            <div>
-                                <span className="profile-info-label">Korisničko ime</span>
-                                <strong>{korisnickoIme}</strong>
-                            </div>
-                        </div>
-                        <div className="profile-info-row">
-                            <div className="profile-info-icon">✉</div>
-                            <div>
-                                <span className="profile-info-label">Email</span>
-                                <strong>{email}</strong>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="profile-card">
-                    <div className="profile-card-title">
-                        <div className="profile-card-icon">📊</div>
-                        <div>
-                            <h3>Eatery statistika</h3>
-                            <p>Na osnovu završenih narudžbi</p>
-                        </div>
-                    </div>
                     <div className="profile-stats">
                         <div className="profile-stat">
+                            <span className="profile-stat-icon amber" aria-hidden="true"><Gift size={16} /></span>
                             <strong>{brojVrecica}</strong>
                             <span>Kupljenih vrećica</span>
                         </div>
-                        <div className="profile-stat-divider" />
                         <div className="profile-stat">
+                            <span className="profile-stat-icon" aria-hidden="true"><Wallet size={16} /></span>
                             <strong>{ukupnaUsteda.toFixed(2)} KM</strong>
                             <span>Ukupna ušteda</span>
                         </div>
                     </div>
-                </div>
 
-                <div className="profile-card profile-stats-card">
-                    <div className="profile-card-title">
-                        <div className="profile-card-icon">✎</div>
-                        <div>
-                            <h3>Podaci naloga</h3>
-                            <p>Izmijenite ime, email ili korisničko ime</p>
+                    {brojVrecica > 0 && (
+                        <p className="profile-impact">
+                            <Leaf size={14} aria-hidden="true" />
+                            Spasili ste {brojVrecica} {brojVrecica === 1 ? 'obrok' : 'obroka'} od bacanja.
+                        </p>
+                    )}
+                </aside>
+
+                <div className="profile-main">
+                    <div className="profile-card">
+                        <div className="profile-card-title">
+                            <span className="profile-card-icon" aria-hidden="true"><User size={18} /></span>
+                            <div>
+                                <h3>Podaci naloga</h3>
+                                <p>{uredi ? 'Izmijenite podatke i sačuvajte' : 'Vaše lične informacije'}</p>
+                            </div>
+                            {!uredi && (
+                                <button
+                                    className="profile-edit-button"
+                                    type="button"
+                                    onClick={() => {
+                                        setPoruka('');
+                                        setUredi(true);
+                                    }}
+                                >
+                                    <Pencil size={14} aria-hidden="true" /> Uredi
+                                </button>
+                            )}
                         </div>
-                        {!uredi && (
-                            <button
-                                className="profile-edit-button"
-                                type="button"
-                                onClick={() => {
-                                    setPoruka('');
-                                    setUredi(true);
-                                }}
-                            >
-                                Uredi
-                            </button>
+
+                        {uredi ? (
+                            <form className="profile-edit-form" onSubmit={sacuvajProfil}>
+                                <div className="profile-edit-grid">
+                                    {POLJA.map(({ name, label, type, autoComplete }) => (
+                                        <label key={name} className={name === 'email' ? 'full' : undefined}>
+                                            {label}
+                                            <input
+                                                name={name}
+                                                type={type}
+                                                value={forma[name]}
+                                                onChange={handleChange}
+                                                autoComplete={autoComplete}
+                                                required
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                                {poruka && porukaTip === 'error' && (
+                                    <p className="profile-edit-message error" role="alert">{poruka}</p>
+                                )}
+                                <div className="profile-edit-actions">
+                                    <button
+                                        className="profile-cancel-button"
+                                        type="button"
+                                        onClick={otkaziIzmjene}
+                                        disabled={saving}
+                                    >
+                                        Otkaži
+                                    </button>
+                                    <button className="profile-save-button" type="submit" disabled={saving}>
+                                        {saving ? 'Spremanje...' : 'Sačuvaj izmjene'}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <>
+                                <dl className="profile-info-list">
+                                    {POLJA.map(({ name, label, Icon }) => (
+                                        <div className="profile-info-row" key={name}>
+                                            <span className="profile-info-icon" aria-hidden="true"><Icon size={16} /></span>
+                                            <div>
+                                                <dt>{label}</dt>
+                                                <dd>{vrijednostPolja(name)}</dd>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </dl>
+                                {poruka && (
+                                    <p className={`profile-edit-message ${porukaTip}`} role="status">
+                                        {porukaTip === 'success' && <CircleCheck size={15} aria-hidden="true" />}
+                                        {poruka}
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
 
-                    {uredi ? (
-                        <form className="profile-edit-form" onSubmit={sacuvajProfil}>
-                            <div className="profile-edit-grid">
-                                <label>
-                                    Ime i prezime
-                                    <input
-                                        name="ime"
-                                        value={forma.ime}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </label>
-                                <label>
-                                    Korisničko ime
-                                    <input
-                                        name="korisnickoIme"
-                                        value={forma.korisnickoIme}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </label>
-                                <label className="full">
-                                    Email
-                                    <input
-                                        name="email"
-                                        type="email"
-                                        value={forma.email}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </label>
+                    <div className="profile-card profile-password-card">
+                        <div className="profile-card-title">
+                            <span className="profile-card-icon" aria-hidden="true"><KeyRound size={18} /></span>
+                            <div>
+                                <h3>Sigurnost</h3>
+                                <p>Promijenite lozinku svog naloga</p>
                             </div>
-                            {poruka && <p className="profile-edit-message error">{poruka}</p>}
-                            <div className="profile-edit-actions">
-                                <button className="profile-save-button" type="submit" disabled={saving}>
-                                    {saving ? 'Spremanje...' : 'Sačuvaj izmjene'}
-                                </button>
-                                <button
-                                    className="profile-cancel-button"
-                                    type="button"
-                                    onClick={otkaziIzmjene}
-                                    disabled={saving}
-                                >
-                                    Otkaži
-                                </button>
-                            </div>
-                        </form>
-                    ) : (
-                        poruka && <p className="profile-edit-message success">{poruka}</p>
-                    )}
-                </div>
-
-                <div className="profile-password-card">
-                    <PromjenaSifre />
+                        </div>
+                        <PromjenaSifre />
+                    </div>
                 </div>
             </div>
         </section>

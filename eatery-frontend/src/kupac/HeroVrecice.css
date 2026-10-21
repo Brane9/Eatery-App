@@ -1,583 +1,226 @@
-
 /* =========================================================
-   EATERY - VRECICE IZNENADJENJA
+   EATERY - VREĆICE IZNENAĐENJA
    ========================================================= */
 
 .surprise-section {
+    --sv-accent: #d97706;
+    --sv-accent-strong: #f59e0b;
+    --sv-accent-light: #fef3c7;
+    --sv-text: var(--text, #15201e);
+    --sv-muted: var(--text-secondary, #5f6d6a);
+    --sv-border: var(--border, #e3e7e5);
+
     position: relative;
-
-    overflow: hidden;
-
-    padding: 25px;
-
-    background:
-        linear-gradient(
-            135deg,
-            #fffaf0 0%,
-            #fffdf8 48%,
-            #f8fbfa 100%
-        );
-
-    border: 1px solid #eee7d7;
-
+    padding: 24px;
+    border: 1px solid #f1e6cc;
     border-radius: 22px;
-
-    box-shadow:
-        0 8px 30px rgba(72, 61, 34, 0.055);
+    background: linear-gradient(160deg, #fffaf0 0%, #fffdf8 55%, #ffffff 100%);
 }
-
-
-/* subtle decorative circle */
-
-.surprise-section::before {
-    content: '';
-
-    position: absolute;
-
-    width: 260px;
-    height: 260px;
-
-    right: -100px;
-    top: -120px;
-
-    border-radius: 50%;
-
-    background: rgba(255, 197, 80, 0.08);
-
-    pointer-events: none;
-}
-
-
-/* =========================================================
-   HEADER
-   ========================================================= */
 
 .surprise-header {
-    position: relative;
-    z-index: 1;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    gap: 25px;
-
-    margin-bottom: 21px;
+    gap: 20px;
+    margin-bottom: 20px;
 }
 
 .surprise-title-area {
     display: flex;
     align-items: center;
-
     gap: 14px;
 }
 
 .surprise-icon {
-    width: 52px;
-    height: 52px;
-
+    width: 50px;
+    height: 50px;
     flex-shrink: 0;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
-    border-radius: 15px;
-
-    background: #fff0c9;
-
-    font-size: 25px;
-
-    box-shadow:
-        inset 0 0 0 1px rgba(210, 166, 67, 0.08);
+    border-radius: 14px;
+    background: var(--sv-accent-strong);
+    color: white;
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.28);
 }
 
 .surprise-label {
     display: block;
-
-    margin-bottom: 3px;
-
-    color: #b18020;
-
-    font-size: 9px;
-    font-weight: 900;
-
-    letter-spacing: 1.5px;
+    margin-bottom: 2px;
+    color: var(--sv-accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
 }
 
 .surprise-title-area h2 {
     margin: 0;
-
-    color: #252b2a;
-
+    color: var(--sv-text);
     font-size: 22px;
     font-weight: 800;
-
-    letter-spacing: -0.7px;
+    letter-spacing: -0.6px;
 }
 
 .surprise-title-area p {
-    margin: 4px 0 0;
-
-    color: #77736a;
-
-    font-size: 12px;
-
+    margin: 3px 0 0;
+    color: var(--sv-muted);
+    font-size: 14px;
     line-height: 1.5;
 }
 
-
-/* sustainability badge */
-
 .surprise-badge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 7px;
-
-    padding: 8px 11px;
-
-    border: 1px solid #e3e8e1;
-
-    border-radius: 20px;
-
-    background: rgba(255, 255, 255, 0.75);
-
-    color: #5f7569;
-
-    font-size: 10px;
-    font-weight: 700;
-
+    gap: 6px;
+    padding: 7px 12px;
+    border: 1px solid #d6e9dd;
+    border-radius: 999px;
+    background: #f0f9f3;
+    color: #2f7a4f;
+    font-size: 12px;
+    font-weight: 600;
     white-space: nowrap;
 }
 
-.surprise-badge span {
-    font-size: 14px;
-}
-
 
 /* =========================================================
-   GRID
+   GRID + CARD
    ========================================================= */
 
 .surprise-grid {
-    position: relative;
-    z-index: 1;
-
     display: grid;
-
-    grid-template-columns:
-        repeat(3, minmax(0, 1fr));
-
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
 }
 
-
-/* =========================================================
-   CARD
-   ========================================================= */
-
 .surprise-card {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-
-    background: rgba(255, 255, 255, 0.95);
-
-    border: 1px solid #e8e7e1;
-
+    border: 1px solid var(--sv-border);
     border-radius: 16px;
-
-    box-shadow:
-        0 5px 18px rgba(58, 50, 31, 0.045);
-
-    transition:
-        transform 0.25s ease,
-        box-shadow 0.25s ease,
-        border-color 0.25s ease;
+    background: white;
+    box-shadow: 0 1px 2px rgba(16, 32, 29, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .surprise-card:hover {
-    transform: translateY(-4px);
-
-    border-color: #ddd5c2;
-
-    box-shadow:
-        0 15px 32px rgba(58, 50, 31, 0.09);
+    transform: translateY(-3px);
+    border-color: #f0d9a8;
+    box-shadow: 0 14px 30px rgba(120, 86, 20, 0.1);
 }
 
+.surprise-card.unavailable {
+    opacity: 0.72;
+}
 
-/* =========================================================
-   CARD TOP
-   ========================================================= */
+.surprise-card.unavailable:hover {
+    transform: none;
+    box-shadow: none;
+}
 
 .surprise-card-top {
     position: relative;
-
-    height: 105px;
-
+    height: 96px;
     display: flex;
     align-items: center;
     justify-content: center;
-
     background:
-        linear-gradient(
-            135deg,
-            #fff1c9,
-            #fff8e7
-        );
-
-    overflow: hidden;
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7) 0 18%, transparent 19%),
+        linear-gradient(135deg, #fde8b4, #fff5dc);
 }
 
 .surprise-card-pattern {
-    width: 65px;
-    height: 65px;
-
+    width: 60px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-
-    border-radius: 20px;
-
-    background: rgba(255, 255, 255, 0.58);
-
-    box-shadow:
-        0 10px 20px rgba(179, 135, 39, 0.09);
-
-    transform: rotate(-5deg);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--sv-accent);
+    box-shadow: 0 8px 18px rgba(179, 135, 39, 0.14);
+    transform: rotate(-6deg);
 }
-
-.surprise-card-pattern span {
-    font-size: 32px;
-
-    transform: rotate(5deg);
-}
-
-
-/* discount */
 
 .discount-badge {
     position: absolute;
-
     top: 10px;
     right: 10px;
-
-    padding: 5px 8px;
-
-    border-radius: 7px;
-
-    background: #d9684d;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #dc4c4c;
     color: white;
-
-    font-size: 10px;
-    font-weight: 900;
-
-    box-shadow:
-        0 4px 10px rgba(217, 104, 77, 0.2);
+    font-size: 12px;
+    font-weight: 800;
 }
 
-
-/* =========================================================
-   CARD CONTENT
-   ========================================================= */
+.stock-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #9a3412;
+    font-size: 11px;
+    font-weight: 700;
+}
 
 .surprise-card-content {
-    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
 }
 
 .surprise-small-label {
     display: block;
-
-    margin-bottom: 4px;
-
-    color: #a69d8a;
-
-    font-size: 8px;
-    font-weight: 900;
-
-    letter-spacing: 1.2px;
+    margin-bottom: 3px;
+    overflow: hidden;
+    color: var(--sv-accent);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
-.surprise-card-heading h3 {
+.surprise-card-content h3 {
     margin: 0;
-
-    color: #202625;
-
-    font-size: 15px;
-    font-weight: 800;
-
-    letter-spacing: -0.25px;
+    color: var(--sv-text);
+    font-size: 16px;
+    font-weight: 750;
+    letter-spacing: -0.2px;
 }
 
 .surprise-description {
-    height: 37px;
-
-    margin: 8px 0 12px;
-
-    overflow: hidden;
-
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-
-    color: #777c79;
-
-    font-size: 11px;
-
-    line-height: 1.6;
-}
-
-.surprise-allergy {
-    margin: 0 0 12px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: #fff7ed;
-    color: #9a3412;
-    font-size: 11px;
-    line-height: 1.45;
-}
-
-.surprise-allergy strong {
-    display: block;
-    margin-bottom: 2px;
-    font-size: 10px;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-}
-
-
-/* =========================================================
-   PRICE
-   ========================================================= */
-
-.surprise-price-row {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-
-    gap: 10px;
-
-    margin-bottom: 13px;
-}
-
-.surprise-prices {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-}
-
-.old-price {
-    display: block;
-    color: #a4a5a2;
-    font-size: 11px;
-    line-height: 1.2;
-    text-decoration: line-through;
-    text-decoration-thickness: 1px;
-}
-
-.new-price {
-    display: block;
-    color: #d45f43;
-    font-size: 19px;
-    font-weight: 900;
-    line-height: 1.1;
-    letter-spacing: -0.5px;
-}
-
-.saving-text {
-    color: #5f8b72;
-
-    font-size: 9px;
-    font-weight: 800;
-
-    white-space: nowrap;
-}
-
-
-/* =========================================================
-   BUTTON
-   ========================================================= */
-
-.surprise-add-button {
-    width: 100%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    gap: 7px;
-
-    padding: 10px 11px;
-
-    border: 1px solid #e5a43b;
-
-    border-radius: 9px;
-
-    background: #f2a529;
-    color: white;
-
-    font-family: inherit;
-
-    font-size: 11px;
-    font-weight: 800;
-
-    cursor: pointer;
-
-    box-shadow:
-        0 5px 12px rgba(219, 153, 34, 0.14);
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-.surprise-add-button:hover {
-    background: #df941c;
-
-    transform: translateY(-1px);
-
-    box-shadow:
-        0 8px 16px rgba(219, 153, 34, 0.2);
-}
-
-.bag-icon {
+    overflow: hidden;
+    margin: 6px 0 12px;
+    color: var(--sv-muted);
     font-size: 13px;
-}
-
-.button-arrow {
-    margin-left: auto;
-
-    font-size: 15px;
-}
-
-
-/* =========================================================
-   EMPTY
-   ========================================================= */
-
-.surprise-empty {
-    position: relative;
-    z-index: 1;
-
-    display: flex;
-    align-items: center;
-    gap: 14px;
-
-    padding: 22px;
-
-    border: 1px dashed #e3dccb;
-
-    border-radius: 13px;
-
-    background: rgba(255, 255, 255, 0.6);
-}
-
-.surprise-empty-icon {
-    width: 43px;
-    height: 43px;
-
-    flex-shrink: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 11px;
-
-    background: #fff1ce;
-
-    font-size: 20px;
-}
-
-.surprise-empty h3 {
-    margin: 0 0 3px;
-
-    font-size: 13px;
-}
-
-.surprise-empty p {
-    margin: 0;
-
-    color: #85837c;
-
-    font-size: 11px;
-}
-
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-@media (max-width: 1050px) {
-
-    .surprise-grid {
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
-    }
-}
-
-
-@media (max-width: 650px) {
-
-    .surprise-section {
-        padding: 17px;
-
-        border-radius: 17px;
-    }
-
-    .surprise-header {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .surprise-badge {
-        display: none;
-    }
-
-    .surprise-title-area h2 {
-        font-size: 19px;
-    }
-
-    .surprise-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .surprise-card-top {
-        height: 115px;
-    }
-
-
-    .surprise-add-button:disabled,
-.surprise-add-button.disabled {
-    background-color: #ccc;
-    color: #666;
-    cursor: not-allowed;
-    opacity: 0.7;
-    border-color: #ccc;
-}
-
-.surprise-add-button:disabled:hover {
-    background-color: #ccc;
-    transform: none; /* onemogućava hover animaciju ako postoji */
-}
+    line-height: 1.5;
 }
 
 .surprise-pickup {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    margin: 0 0 12px;
-    padding: 8px 10px;
+    margin-bottom: 10px;
+    padding: 9px 10px;
     border-radius: 10px;
     background: var(--primary-light, #e7f5f3);
     color: var(--primary-dark, #115e59);
-    font-size: 11px;
-    line-height: 1.45;
+    font-size: 12px;
+    line-height: 1.4;
 }
 
-.surprise-pickup-icon {
-    font-size: 14px;
-    line-height: 1.2;
+.surprise-pickup svg {
+    flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .surprise-pickup strong {
@@ -595,17 +238,208 @@
     color: #6b7280;
 }
 
-.surprise-add-button:disabled,
-.surprise-add-button.disabled {
-    background-color: #ccc;
-    border-color: #ccc;
-    color: #666;
-    cursor: not-allowed;
-    opacity: 0.7;
+.surprise-allergy {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: 12px;
+    line-height: 1.45;
 }
 
-.surprise-add-button:disabled:hover {
-    background-color: #ccc;
+.surprise-allergy svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.surprise-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border-light, #eef1ef);
+}
+
+.surprise-prices {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.old-price {
+    color: #a4a9a7;
+    font-size: 12px;
+    text-decoration: line-through;
+}
+
+.new-price {
+    color: var(--sv-text);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+
+.saving-text {
+    color: #2f7a4f;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.surprise-add-button {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 11px;
+    background: var(--sv-accent-strong);
+    color: #3b2604;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(245, 158, 11, 0.25);
+    transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.surprise-add-button:hover:not(:disabled) {
+    background: #eb9408;
+    transform: translateY(-1px);
+}
+
+.surprise-add-button:disabled {
+    background: #e5e7eb;
+    color: #6b7280;
     box-shadow: none;
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   SKELETON + EMPTY
+   ========================================================= */
+
+.surprise-card.skeleton:hover {
     transform: none;
+    box-shadow: none;
+}
+
+.skeleton-block {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f1f1ee 25%, #f8f8f5 50%, #f1f1ee 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s infinite linear;
+}
+
+.skeleton-block.tall {
+    height: 96px;
+    border-radius: 0;
+}
+
+.skeleton-block.line {
+    height: 14px;
+    margin-bottom: 10px;
+}
+
+.skeleton-block.short {
+    width: 60%;
+}
+
+.skeleton-block.button {
+    height: 40px;
+    margin-top: 14px;
+}
+
+@keyframes shimmer {
+    to { background-position: -200% 0; }
+}
+
+.surprise-empty {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px;
+    border: 1px dashed #ecdcb8;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.surprise-empty-icon {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: var(--sv-accent-light);
+    color: var(--sv-accent);
+}
+
+.surprise-empty h3 {
+    margin: 0 0 2px;
+    font-size: 14px;
+}
+
+.surprise-empty p {
+    margin: 0;
+    color: var(--sv-muted);
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1050px) {
+    .surprise-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 650px) {
+    .surprise-section {
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .surprise-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .surprise-title-area h2 {
+        font-size: 19px;
+    }
+
+    /* Horizontalni scroll na mobilnom da sekcija ne zauzme cijeli ekran */
+    .surprise-grid {
+        display: flex;
+        gap: 12px;
+        margin: 0 -16px;
+        padding: 2px 16px 6px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+    }
+
+    .surprise-grid::-webkit-scrollbar {
+        display: none;
+    }
+
+    .surprise-card {
+        flex: 0 0 82%;
+        scroll-snap-align: start;
+    }
 }

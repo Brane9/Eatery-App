@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Gift, Leaf, Clock, TriangleAlert, ShoppingBag, Ban } from 'lucide-react';
 import API from '../api';
 import { statusPreuzimanjaVrecice } from './radnoVrijeme';
 import './HeroVrecice.css';
@@ -31,42 +32,39 @@ function HeroVrecice({ onDodajUVrecicu }) {
         };
     }, []);
 
-    if (loading) {
-        return (
-            <section className="surprise-section">
-                <div className="surprise-loading">
-                    <div className="surprise-spinner" />
-                    <p>Učitavanje vrećica iznenađenja...</p>
-                </div>
-            </section>
-        );
-    }
-
     return (
-        <section className="surprise-section">
-            {/* HEADER */}
+        <section className="surprise-section" aria-labelledby="vrecice-naslov">
             <div className="surprise-header">
                 <div className="surprise-title-area">
-                    <div className="surprise-icon">🎁</div>
-
+                    <span className="surprise-icon" aria-hidden="true"><Gift size={24} /></span>
                     <div>
-                        <span className="surprise-label">EATERY SPECIAL</span>
-                        <h2>Vrećice iznenađenja</h2>
-                        <p>
-                            Spasite odličnu hranu i uživajte u obroku po znatno nižoj cijeni.
-                        </p>
+                        <span className="surprise-label">Eatery special</span>
+                        <h2 id="vrecice-naslov">Vrećice iznenađenja</h2>
+                        <p>Spasite odličnu hranu i uživajte u obroku po znatno nižoj cijeni.</p>
                     </div>
                 </div>
 
                 <div className="surprise-badge">
-                    <span>♻</span> Smanjujemo bacanje hrane
+                    <Leaf size={14} aria-hidden="true" /> Smanjujemo bacanje hrane
                 </div>
             </div>
 
-            {/* VRECICE LISTA / EMPTY STATE */}
-            {vrecice.length === 0 ? (
+            {loading ? (
+                <div className="surprise-grid" aria-busy="true" aria-label="Učitavanje vrećica">
+                    {[0, 1, 2].map((i) => (
+                        <div className="surprise-card skeleton" key={i}>
+                            <div className="skeleton-block tall" />
+                            <div className="surprise-card-content">
+                                <div className="skeleton-block line" />
+                                <div className="skeleton-block line short" />
+                                <div className="skeleton-block button" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : vrecice.length === 0 ? (
                 <div className="surprise-empty">
-                    <div className="surprise-empty-icon">🎁</div>
+                    <span className="surprise-empty-icon" aria-hidden="true"><Gift size={20} /></span>
                     <div>
                         <h3>Trenutno nema dostupnih vrećica</h3>
                         <p>Nove vrećice iznenađenja biće dostupne uskoro.</p>
@@ -80,14 +78,11 @@ function HeroVrecice({ onDodajUVrecicu }) {
 
                         const usteda =
                             staraCijena > 0
-                                ? Math.round(
-                                      ((staraCijena - akcijskaCijena) / staraCijena) * 100
-                                  )
+                                ? Math.round(((staraCijena - akcijskaCijena) / staraCijena) * 100)
                                 : 0;
 
                         const razlikaCijene = staraCijena - akcijskaCijena;
 
-                        // Provjera preostale količine (prilagodi naziv polja sa API-ja ako je npr. v.zaliha)
                         const kolicina = Number(v.kolicina) || 0;
                         const isRasprodano = kolicina <= 0;
 
@@ -99,51 +94,47 @@ function HeroVrecice({ onDodajUVrecicu }) {
                         );
                         const preuzimanjeIsteklo = statusPreuzimanja === 'isteklo';
                         const nedostupno = isRasprodano || preuzimanjeIsteklo;
+                        const nazivRestorana = v.restoran?.nazivObjekta || v.restoran?.naziv;
 
                         return (
-                            <article className="surprise-card" key={v.id}>
-                                {/* IMAGE / ICON AREA */}
+                            <article className={nedostupno ? 'surprise-card unavailable' : 'surprise-card'} key={v.id}>
                                 <div className="surprise-card-top">
-                                    <div className="surprise-card-pattern">
-                                        <span>🎁</span>
-                                    </div>
+                                    <span className="surprise-card-pattern" aria-hidden="true">
+                                        <Gift size={30} />
+                                    </span>
 
                                     {usteda > 0 && (
-                                        <div className="discount-badge">
-                                            -{usteda}%
-                                        </div>
+                                        <span className="discount-badge">-{usteda}%</span>
+                                    )}
+
+                                    {!isRasprodano && kolicina > 0 && kolicina <= 3 && (
+                                        <span className="stock-badge">Još {kolicina}</span>
                                     )}
                                 </div>
 
-                                {/* CONTENT */}
                                 <div className="surprise-card-content">
-                                    <div className="surprise-card-heading">
-                                        <div>
-                                            <span className="surprise-small-label">
-                                                VREĆICA IZNENAĐENJA
-                                            </span>
-                                            <h3>{v.naziv}</h3>
-                                        </div>
-                                    </div>
+                                    {nazivRestorana && (
+                                        <span className="surprise-small-label">{nazivRestorana}</span>
+                                    )}
+                                    <h3>{v.naziv}</h3>
 
                                     <p className="surprise-description">
-                                        {v.opis ||
-                                            'Odabrana hrana iz restorana po posebnoj cijeni.'}
+                                        {v.opis || 'Odabrana hrana iz restorana po posebnoj cijeni.'}
                                     </p>
 
                                     {imaSatnicu && (
                                         <div className={`surprise-pickup ${statusPreuzimanja || ''}`}>
-                                            <span className="surprise-pickup-icon">🕒</span>
+                                            <Clock size={15} aria-hidden="true" />
                                             <div>
                                                 <strong>
                                                     Preuzimanje danas {v.vrijemePreuzimanjaOd} – {v.vrijemePreuzimanjaDo}
                                                 </strong>
                                                 <span>
                                                     {statusPreuzimanja === 'sada'
-                                                        ? 'Preuzimanje je u toku, možete doći odmah'
+                                                        ? 'U toku je, možete doći odmah'
                                                         : preuzimanjeIsteklo
-                                                        ? 'Preuzimanje je za danas završeno'
-                                                        : 'Dobićete obavještenje kad možete doći'}
+                                                        ? 'Za danas je završeno'
+                                                        : 'Obavijestićemo vas kad možete doći'}
                                                 </span>
                                             </div>
                                         </div>
@@ -151,54 +142,38 @@ function HeroVrecice({ onDodajUVrecicu }) {
 
                                     {v.alergijskaUpozorenja && (
                                         <div className="surprise-allergy">
-                                            <strong>Alergijsko upozorenje:</strong>
-                                            <span>{v.alergijskaUpozorenja}</span>
+                                            <TriangleAlert size={14} aria-hidden="true" />
+                                            <span><strong>Alergeni:</strong> {v.alergijskaUpozorenja}</span>
                                         </div>
                                     )}
 
-                                    {/* PRICE */}
-                                    <div className="surprise-price-row">
+                                    <div className="surprise-footer">
                                         <div className="surprise-prices">
                                             {staraCijena > 0 && (
-                                                <span className="old-price">
-                                                    {staraCijena.toFixed(2)} KM
-                                                </span>
+                                                <span className="old-price">{staraCijena.toFixed(2)} KM</span>
                                             )}
-
-                                            <strong className="new-price">
-                                                {akcijskaCijena.toFixed(2)} KM
-                                            </strong>
+                                            <strong className="new-price">{akcijskaCijena.toFixed(2)} KM</strong>
+                                            {razlikaCijene > 0 && (
+                                                <span className="saving-text">Ušteda {razlikaCijene.toFixed(2)} KM</span>
+                                            )}
                                         </div>
 
-                                        {razlikaCijene > 0 && (
-                                            <span className="saving-text">
-                                                Ušteda {razlikaCijene.toFixed(2)} KM
-                                            </span>
-                                        )}
+                                        <button
+                                            type="button"
+                                            className="surprise-add-button"
+                                            onClick={() => onDodajUVrecicu(v)}
+                                            disabled={nedostupno}
+                                        >
+                                            {nedostupno
+                                                ? <Ban size={15} aria-hidden="true" />
+                                                : <ShoppingBag size={15} aria-hidden="true" />}
+                                            {isRasprodano
+                                                ? 'Rasprodano'
+                                                : preuzimanjeIsteklo
+                                                ? 'Završeno'
+                                                : 'Dodaj u korpu'}
+                                        </button>
                                     </div>
-
-                                    {/* BUTTON */}
-                                    <button
-                                        className={`surprise-add-button ${
-                                            nedostupno ? 'disabled' : ''
-                                        }`}
-                                        onClick={() => onDodajUVrecicu(v)}
-                                        disabled={nedostupno}
-                                    >
-                                        <span className="bag-icon">
-                                            {nedostupno ? '🚫' : '🛒'}
-                                        </span>
-
-                                        {isRasprodano
-                                            ? 'Rasprodano'
-                                            : preuzimanjeIsteklo
-                                            ? 'Preuzimanje završeno'
-                                            : 'Dodaj u korpu'}
-
-                                        {!nedostupno && (
-                                            <span className="button-arrow">→</span>
-                                        )}
-                                    </button>
                                 </div>
                             </article>
                         );
