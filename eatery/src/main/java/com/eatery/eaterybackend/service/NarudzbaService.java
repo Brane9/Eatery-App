@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -73,18 +74,28 @@ public class NarudzbaService {
         }
 
         List<VrecicaIznenadjenjaEntity> vreciceUNarudzbi = new ArrayList<>();
+        boolean imaJelo = false;
         if (dto.getStavke() != null) {
             for (NarudzbaDTO.StavkaDTO sDTO : dto.getStavke()) {
-                if ("VRECICA".equalsIgnoreCase(sDTO.getTipStavke()) && sDTO.getJeloId() != null) {
-                    VrecicaIznenadjenjaEntity v = vrecicaIznenadjenjaRepository.findById(sDTO.getJeloId()).orElse(null);
-                    if (v == null || Boolean.TRUE.equals(v.getObrisana()) || !Boolean.TRUE.equals(v.getAktivna())) {
-                        String naziv = v != null ? "\"" + v.getNaziv() + "\" " : "";
-                        throw new ApiException(HttpStatus.BAD_REQUEST,
-                                "Vrećica " + naziv + "više nije dostupna. Uklonite je iz korpe.");
+                if ("VRECICA".equalsIgnoreCase(sDTO.getTipStavke())) {
+                    if (sDTO.getJeloId() != null) {
+                        VrecicaIznenadjenjaEntity v = vrecicaIznenadjenjaRepository.findById(sDTO.getJeloId()).orElse(null);
+                        if (v == null || Boolean.TRUE.equals(v.getObrisana()) || !Boolean.TRUE.equals(v.getAktivna())) {
+                            String naziv = v != null ? "\"" + v.getNaziv() + "\" " : "";
+                            throw new ApiException(HttpStatus.BAD_REQUEST,
+                                    "Vrećica " + naziv + "više nije dostupna. Uklonite je iz korpe.");
+                        }
+                        vreciceUNarudzbi.add(v);
                     }
-                    vreciceUNarudzbi.add(v);
+                } else {
+                    imaJelo = true;
                 }
             }
+        }
+
+        if (imaJelo && !vreciceUNarudzbi.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Jela se dostavljaju na adresu, a vrećica iznenađenja se preuzima u restoranu. Naručite ih odvojeno.");
         }
 
         LocalDateTime sada = preuzimanjeVreciceService.sada();
@@ -107,6 +118,12 @@ public class NarudzbaService {
             narudzba.setPreuzimanjeOd(termin.od());
             narudzba.setPreuzimanjeDo(termin.doVrijeme());
             narudzba.setObavijestPreuzimanjaPoslana(termin.jeAktivan(sada));
+        }
+        if (!vreciceUNarudzbi.isEmpty()) {
+            narudzba.setPin(String.format("%04d", new Random().nextInt(10000)));
+            if (dto.getAdresaDostave() == null || dto.getAdresaDostave().isBlank()) {
+                narudzba.setAdresaDostave("Preuzimanje u restoranu");
+            }
         }
 
         NarudzbaEntity sacuvana = narudzbaRepository.save(narudzba);
@@ -179,6 +196,7 @@ public class NarudzbaService {
             dto.setAdresaDostave(n.getAdresaDostave());
             dto.setStatus(n.getStatus());
             dto.setUkupnaCijena(n.getUkupnaCijena());
+            dto.setPin(n.getPin());
             dto.setPreuzimanjeOd(n.getPreuzimanjeOd());
             dto.setPreuzimanjeDo(n.getPreuzimanjeDo());
 

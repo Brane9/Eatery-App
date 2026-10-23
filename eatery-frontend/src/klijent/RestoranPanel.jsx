@@ -17,6 +17,10 @@ const kljucNarudzbe = (narudzba) => {
     return id == null ? null : String(id);
 };
 
+const narudzbaImaVrecicu = (n) =>
+    (n?.stavke || []).some((s) => String(s.tipStavke || '').toUpperCase() === 'VRECICA')
+    || Boolean(n?.preuzimanjeOd);
+
 const RestoranPanel = ({ restoranId, user, onLogout }) => {
 
     // =========================================================
@@ -1599,8 +1603,8 @@ idiNaSekciju("analitika")
                     </ul>
                 </div>
 
-                {/* UNOS PIN-A ZA PREUZIMANJE */}
-                {!jeKrajnjiStatus && (
+                {/* UNOS PIN-A ZA PREUZIMANJE VREĆICE */}
+                {!jeKrajnjiStatus && narudzbaImaVrecicu(n) && (
                     <div className="eatery-pin-unos">
                         <span className="action-label">🔐 PIN za preuzimanje:</span>
 

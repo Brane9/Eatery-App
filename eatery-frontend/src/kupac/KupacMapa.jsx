@@ -90,12 +90,8 @@ const formatUdaljenost = (km) => (km != null ? Number(km).toFixed(1) : '0.0');
 // GLAVNA KOMPONENTA
 // =========================================================
 
-const KupacMapa = ({ onIzaberiRestoran }) => {
-    // Banja Luka fallback
-    const [kupacLokacija, setKupacLokacija] = useState({
-        lat: 44.7722,
-        lng: 17.1910
-    });
+const KupacMapa = ({ onIzaberiRestoran, onBrojUBlizini }) => {
+    const [kupacLokacija, setKupacLokacija] = useState(null);
 
     const [restorani, setRestorani] = useState([]);
     const [loadingLokacije, setLoadingLokacije] = useState(true);
@@ -111,13 +107,18 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
 
     const RADIJUS_KM = 5;
 
-    // 1. LOKACIJA KUPCA
-    useEffect(() => {
+    const zatraziLokaciju = () => {
         if (!navigator.geolocation) {
-            setGreska('Vaš browser ne podržava određivanje lokacije. Koristi se podrazumijevana lokacija.');
+            setGreska('Vaš pregledač ne podržava određivanje lokacije. Uključite je da biste vidjeli restorane u blizini.');
+            setLokacijaAktivna(false);
+            setKupacLokacija(null);
+            setRestorani([]);
             setLoadingLokacije(false);
             return;
         }
+
+        setLoadingLokacije(true);
+        setGreska('');
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -131,7 +132,10 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
             },
             (error) => {
                 console.warn('Lokacija nije dostupna:', error);
-                setGreska('Lokacija nije odobrena. Koristi se podrazumijevana lokacija.');
+                setKupacLokacija(null);
+                setLokacijaAktivna(false);
+                setRestorani([]);
+                setGreska('Lokacija nije odobrena. Uključite je u pregledaču da biste vidjeli restorane u blizini.');
                 setLoadingLokacije(false);
             },
             {
@@ -140,11 +144,18 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
                 maximumAge: 60000
             }
         );
+    };
+
+    // 1. LOKACIJA KUPCA
+    useEffect(() => {
+        zatraziLokaciju();
     }, []);
 
-    // 2. RESTORANI U BLIZINI
+    // 2. RESTORANI U BLIZINI — samo kad postoji stvarna lokacija kupca
     useEffect(() => {
-        if (!kupacLokacija.lat || !kupacLokacija.lng) return;
+        if (!lokacijaAktivna || kupacLokacija?.lat == null || kupacLokacija?.lng == null) {
+            return;
+        }
 
         setLoadingRestorana(true);
 
@@ -166,7 +177,16 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
             .finally(() => {
                 setLoadingRestorana(false);
             });
-    }, [kupacLokacija]);
+    }, [kupacLokacija, lokacijaAktivna]);
+
+    useEffect(() => {
+        if (!onBrojUBlizini) return;
+        onBrojUBlizini({
+            broj: lokacijaAktivna ? restorani.length : null,
+            ucitavanje: loadingLokacije || (lokacijaAktivna && loadingRestorana),
+            imaLokaciju: lokacijaAktivna
+        });
+    }, [restorani.length, loadingLokacije, loadingRestorana, lokacijaAktivna, onBrojUBlizini]);
 
     // 3. OTVORI RESTORAN
     const otvoriRestoran = (restoran) => {
@@ -205,9 +225,13 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
                     <span className="kupac-mapa-eyebrow">Istražite ponudu</span>
                     <h2 id="mapa-naslov">Restorani u vašoj blizini</h2>
                     <p>
-                        {ucitavanje
-                            ? 'Pronalazimo restorane u vašoj okolini...'
-                            : `${restorani.length} restorana u krugu od ${RADIJUS_KM} km · ${brojOtvorenih} trenutno otvoreno`}
+                        {loadingLokacije
+                            ? 'Tražimo vašu lokaciju...'
+                            : !lokacijaAktivna
+                                ? 'Uključite lokaciju da vidite restorane.'
+                                : ucitavanje
+                                    ? 'Pronalazimo restorane u vašoj okolini...'
+                                    : `${restorani.length} restorana u vašoj blizini · ${brojOtvorenih} trenutno otvoreno`}
                     </p>
                 </div>
 
@@ -275,6 +299,17 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    ) : !lokacijaAktivna ? (
+                        <div className="kupac-map-empty">
+                            <span className="kupac-map-empty-icon" aria-hidden="true"><Navigation size={22} /></span>
+                            <div>
+                                <h3>Lokacija nije dostupna</h3>
+                                <p>Da bismo prikazali restorane u blizini, potrebna nam je vaša trenutna lokacija.</p>
+                                <button type="button" className="map-popup-button" onClick={zatraziLokaciju}>
+                                    Omogući lokaciju
+                                </button>
+                            </div>
                         </div>
                     ) : prikazaniRestorani.length === 0 ? (
                         <div className="kupac-map-empty">
@@ -379,6 +414,16 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
 
                 {/* MAPA */}
                 <div className="kupac-map-container">
+                    {!lokacijaAktivna || !kupacLokacija ? (
+                        <div className="kupac-map-need-location">
+                            <Navigation size={28} aria-hidden="true" />
+                            <strong>Mapa čeka vašu lokaciju</strong>
+                            <span>Bez početne tačke ne prikazujemo restorane iz drugog grada.</span>
+                            <button type="button" className="map-popup-button" onClick={zatraziLokaciju}>
+                                Omogući lokaciju
+                            </button>
+                        </div>
+                    ) : (
                     <MapContainer
                         center={[kupacLokacija.lat, kupacLokacija.lng]}
                         zoom={13}
@@ -398,7 +443,7 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
                             <Popup className="premium-map-popup">
                                 <div className="map-popup-content">
                                     <strong>Vaša lokacija</strong>
-                                    <span>{lokacijaAktivna ? 'Trenutna pozicija' : 'Podrazumijevana lokacija'}</span>
+                                    <span>Trenutna pozicija</span>
                                 </div>
                             </Popup>
                         </Marker>
@@ -454,10 +499,11 @@ const KupacMapa = ({ onIzaberiRestoran }) => {
                                 );
                             })}
                     </MapContainer>
+                    )}
 
                     <div className="map-location-badge">
                         <span className={lokacijaAktivna ? 'map-location-badge-dot' : 'map-location-badge-dot off'} />
-                        {lokacijaAktivna ? 'Lokacija aktivna' : 'Približna lokacija'}
+                        {lokacijaAktivna ? 'Lokacija aktivna' : 'Lokacija nije odobrena'}
                     </div>
                 </div>
             </div>

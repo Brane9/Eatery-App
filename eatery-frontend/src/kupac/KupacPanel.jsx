@@ -72,6 +72,7 @@ const citajGreskuApi = (err, fallback) => {
 };
 
 const idRestorana = (r) => r?.id || r?.idKorisnika;
+const jeVrecicaId = (id) => String(id || '').startsWith('vrecica');
 
 const NAVIGACIJA = [
     { id: 'restorani', label: 'Restorani', Icon: Store },
@@ -104,6 +105,7 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
     const [aktivnaStranica, setAktivnaStranica] = useState('restorani');
     const [narudzbaGreska, setNarudzbaGreska] = useState('');
     const [slanjeNarudzbe, setSlanjeNarudzbe] = useState(false);
+    const [blizina, setBlizina] = useState({ broj: null, ucitavanje: true, imaLokaciju: false });
 
     useEffect(() => {
         API.get('/kupac/restorani')
@@ -220,14 +222,32 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
         otvoriRestoran(restoran);
     };
 
-    const dodajUKorpu = (jelo) => {
+    const dodajUKorpu = (jelo, { zamijeniKorpu = false } = {}) => {
+        const novaJeVrecica = jeVrecicaId(jelo.id);
+        let dodato = true;
+
         setKorpa(prev => {
-            const postojeca = prev.find(item => item.jelo.id === jelo.id);
-            if (postojeca) {
-                return prev.map(item => item.jelo.id === jelo.id ? { ...item, kolicina: item.kolicina + 1 } : item);
+            const izvor = zamijeniKorpu ? [] : prev;
+            const konflikt = izvor.some(item => jeVrecicaId(item.jelo.id) !== novaJeVrecica);
+            if (konflikt) {
+                dodato = false;
+                return prev;
             }
-            return [...prev, { jelo, kolicina: 1 }];
+            const postojeca = izvor.find(item => item.jelo.id === jelo.id);
+            if (postojeca) {
+                return izvor.map(item => item.jelo.id === jelo.id ? { ...item, kolicina: item.kolicina + 1 } : item);
+            }
+            return [...izvor, { jelo, kolicina: 1 }];
         });
+
+        if (!dodato) {
+            setPoruka(
+                novaJeVrecica
+                    ? 'Vrećica se preuzima u restoranu, a jela iz korpe se dostavljaju na adresu. Naručite ih odvojeno — prvo završite ili očistite korpu.'
+                    : 'U korpi je vrećica za preuzimanje u restoranu. Jela naručite kao posebnu narudžbu (dostava na adresu).'
+            );
+        }
+        return dodato;
     };
 
     const povecajKolicinu = (id) => {
@@ -260,7 +280,8 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
             opis: vrecica.alergijskaUpozorenja ? `${vrecica.opis || ''} Alergeni: ${vrecica.alergijskaUpozorenja}`.trim() : vrecica.opis
         };
 
-        dodajUKorpu(vrecicaJelo);
+        const dodato = dodajUKorpu(vrecicaJelo, { zamijeniKorpu: !istiRestoran });
+        if (!dodato) return;
         setPoruka(
             korpaIspraznjena
                 ? `Dodato u korpu: ${vrecica.naziv}. Prethodna korpa iz drugog restorana je ispražnjena.`
@@ -270,6 +291,8 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
 
     const ukupnaCijenaKorpe = korpa.reduce((sum, item) => sum + item.jelo.cijena * item.kolicina, 0);
     const brojArtikala = korpa.reduce((sum, item) => sum + item.kolicina, 0);
+    const korpaSamoVrecice = korpa.length > 0 && korpa.every(item => jeVrecicaId(item.jelo.id));
+    const korpaSamoJela = korpa.length > 0 && korpa.every(item => !jeVrecicaId(item.jelo.id));
 
     const posaljiNarudzbu = async (e) => {
         if (e) e.preventDefault();
@@ -318,10 +341,20 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
             return;
         }
 
+        if (!korpaSamoVrecice && !korpaSamoJela) {
+            setNarudzbaGreska('Jela i vrećica iznenađenja ne mogu u istoj narudžbi. Naručite ih odvojeno.');
+            return;
+        }
+
+        if (korpaSamoJela && !adresa.trim()) {
+            setNarudzbaGreska('Unesite adresu dostave za jela.');
+            return;
+        }
+
         const dto = {
             kupacId: Number(kId),
             restoranId: Number(rId),
-            adresaDostave: adresa || 'Preuzimanje u restoranu',
+            adresaDostave: korpaSamoVrecice ? 'Preuzimanje u restoranu' : adresa.trim(),
             ukupnaCijena: Number(ukupnaCijenaKorpe),
             stavke: stavkeDTO
         };
@@ -605,7 +638,15 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                                     <span className="quick-action-icon" aria-hidden="true"><MapPin size={20} /></span>
                                     <span className="quick-action-text">
                                         <strong>Restorani u blizini</strong>
-                                        <span>{restorani.length} dostupnih restorana</span>
+                                        <span>
+                                            {blizina.ucitavanje
+                                                ? 'Tražimo restorane u blizini...'
+                                                : !blizina.imaLokaciju
+                                                    ? 'Uključite lokaciju da vidite ponudu'
+                                                    : blizina.broj === 0
+                                                        ? 'Nema restorana u krugu od 5 km'
+                                                        : `${blizina.broj} ${blizina.broj === 1 ? 'restoran' : 'restorana'} u krugu od 5 km`}
+                                        </span>
                                     </span>
                                     <ArrowRight size={16} className="quick-action-arrow" aria-hidden="true" />
                                 </button>
@@ -641,7 +682,7 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                         </section>
 
                         <section className="map-section" id="mapa">
-                            <KupacMapa onIzaberiRestoran={izaberiRestoran} />
+                            <KupacMapa onIzaberiRestoran={izaberiRestoran} onBrojUBlizini={setBlizina} />
                         </section>
                     </>
                 )}
@@ -872,16 +913,35 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                                         </ul>
 
                                         <form className="order-form" onSubmit={posaljiNarudzbu}>
-                                            <label htmlFor="adresa-dostave">Adresa dostave</label>
-                                            <input
-                                                id="adresa-dostave"
-                                                type="text"
-                                                placeholder="Ulica i broj, grad"
-                                                value={adresa}
-                                                onChange={e => setAdresa(e.target.value)}
-                                                autoComplete="street-address"
-                                                required
-                                            />
+                                            {korpaSamoVrecice ? (
+                                                <div className="cart-fulfillment-note pickup">
+                                                    <Gift size={15} aria-hidden="true" />
+                                                    <div>
+                                                        <strong>Preuzimanje u restoranu</strong>
+                                                        <span>Vrećicu preuzimate u lokalu u terminu restorana. PIN dobijate nakon narudžbe.</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="cart-fulfillment-note">
+                                                        <MapPin size={15} aria-hidden="true" />
+                                                        <div>
+                                                            <strong>Dostava na adresu</strong>
+                                                            <span>Jela stižu na unesenu adresu. Vrećicu iznenađenja naručite odvojeno (preuzimanje u lokalu).</span>
+                                                        </div>
+                                                    </div>
+                                                    <label htmlFor="adresa-dostave">Adresa dostave</label>
+                                                    <input
+                                                        id="adresa-dostave"
+                                                        type="text"
+                                                        placeholder="Ulica i broj, grad"
+                                                        value={adresa}
+                                                        onChange={e => setAdresa(e.target.value)}
+                                                        autoComplete="street-address"
+                                                        required
+                                                    />
+                                                </>
+                                            )}
 
                                             <div className="summary-total">
                                                 <span>Ukupno</span>

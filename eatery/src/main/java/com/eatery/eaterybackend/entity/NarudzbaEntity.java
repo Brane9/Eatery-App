@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -94,11 +93,6 @@ public class NarudzbaEntity {
         if (this.status == null) {
 
             this.status = "KREIRANA";
-        }
-
-        if (this.pin == null || this.pin.isEmpty()) {
-            
-            this.pin = String.format("%04d", new Random().nextInt(10000));
         }
     }
     // Dodajte na dno klase NarudzbaEntity.java:

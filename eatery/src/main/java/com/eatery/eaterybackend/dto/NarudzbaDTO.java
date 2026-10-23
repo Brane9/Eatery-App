@@ -19,6 +19,7 @@ public class NarudzbaDTO {
     private String status;
     private String adresaDostave;
     private BigDecimal ukupnaCijena;
+    private String pin; // samo za preuzimanje vrećice iznenađenja
     private LocalDateTime preuzimanjeOd; // termin preuzimanja vrećice (null ako nema vrećice)
     private LocalDateTime preuzimanjeDo;
     private List<StavkaDTO> stavke;

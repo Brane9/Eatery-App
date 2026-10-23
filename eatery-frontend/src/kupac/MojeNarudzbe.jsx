@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Clock, Star, Check, X, ReceiptText, ChevronLeft, ChevronRight, MapPin, KeyRound, Store } from 'lucide-react';
+import { Clock, Star, Check, X, ReceiptText, ChevronLeft, ChevronRight, MapPin, KeyRound, Store, Gift } from 'lucide-react';
 import { statusTerminaNarudzbe, formatTerminNarudzbe } from './radnoVrijeme';
 import './MojeNarudzbe.css';
 
@@ -34,6 +34,10 @@ const FILTERI = [
 
 const jeZavrsena = (n) => n.status === 'PREUZETO' || n.status === 'DOSTAVLJENO';
 const jeOdbijena = (n) => (statusMap[n.status]?.className) === 'rejected';
+const imaVrecicu = (n) =>
+    (n.stavke || []).some((s) => String(s.tipStavke || '').toUpperCase() === 'VRECICA')
+    || Boolean(n.preuzimanjeOd);
+const jeVrecicaStavka = (s) => String(s?.tipStavke || '').toUpperCase() === 'VRECICA';
 
 const MojeNarudzbe = ({ kupacId, onNovaNarudzba }) => {
     const [narudzbe, setNarudzbe] = useState([]);
@@ -248,6 +252,7 @@ const MojeNarudzbe = ({ kupacId, onNovaNarudzba }) => {
                         // Termin preuzimanja vrećice iznenađenja
                         const statusTermina = statusTerminaNarudzbe(n.preuzimanjeOd, n.preuzimanjeDo);
                         const cekaPreuzimanje = !isZavrseno && !isOdbijeno;
+                        const jeVrecicaNarudzba = imaVrecicu(n);
                         const korakIndex = KORACI.findIndex(k => k.kljuc === statusInfo.className);
 
                         return (
@@ -280,9 +285,9 @@ const MojeNarudzbe = ({ kupacId, onNovaNarudzba }) => {
                                     </ol>
                                 )}
 
-                                {n.pin && cekaPreuzimanje && (
+                                {n.pin && jeVrecicaNarudzba && cekaPreuzimanje && (
                                     <div className="customer-order-pin">
-                                        <span><KeyRound size={14} aria-hidden="true" /> PIN za preuzimanje</span>
+                                        <span><KeyRound size={14} aria-hidden="true" /> PIN za preuzimanje vrećice</span>
                                         <strong>{n.pin}</strong>
                                     </div>
                                 )}
@@ -307,7 +312,8 @@ const MojeNarudzbe = ({ kupacId, onNovaNarudzba }) => {
                                         <li key={idx}>
                                             <span>
                                                 {s.kolicina ? <b>{s.kolicina}×</b> : null}
-                                                {s.nazivJela || s.naziv || (s.tipStavke === 'VRECICA' ? 'Vrećica iznenađenja' : 'Jelo')}
+                                                {s.nazivJela || s.naziv || (jeVrecicaStavka(s) ? 'Vrećica iznenađenja' : 'Jelo')}
+                                                {jeVrecicaStavka(s) && <em className="item-fulfillment-tag">Preuzimanje</em>}
                                             </span>
                                             <strong>
                                                 {s.cijena != null ? `${Number(s.cijena).toFixed(2)} KM` : ''}
@@ -320,14 +326,21 @@ const MojeNarudzbe = ({ kupacId, onNovaNarudzba }) => {
 
                                 <div className="customer-order-footer">
                                     <div className="customer-order-address">
-                                        <MapPin size={14} aria-hidden="true" />
-                                        <span>{n.adresaDostave || 'Preuzimanje u restoranu'}</span>
+                                        {jeVrecicaNarudzba ? <Gift size={14} aria-hidden="true" /> : <MapPin size={14} aria-hidden="true" />}
+                                        <span>
+                                            {jeVrecicaNarudzba
+                                                ? (n.adresaDostave && n.adresaDostave !== 'Preuzimanje u restoranu'
+                                                    ? n.adresaDostave
+                                                    : 'Preuzimanje u restoranu')
+                                                : (n.adresaDostave || 'Adresa nije navedena')}
+                                        </span>
                                     </div>
 
                                     <div className="customer-order-footer-right">
-                                        <strong className="customer-order-total">
-                                            {Number(n.ukupnaCijena || 0).toFixed(2)} KM
-                                        </strong>
+                                        <div className="customer-order-price-chip">
+                                            <span>Ukupno</span>
+                                            <strong>{Number(n.ukupnaCijena || 0).toFixed(2)} KM</strong>
+                                        </div>
 
                                         {isZavrseno && (
                                             isVecOcjenjeno ? (
@@ -348,7 +361,7 @@ const MojeNarudzbe = ({ kupacId, onNovaNarudzba }) => {
                                                 >
                                                     {isOtvoreno
                                                         ? <><X size={14} aria-hidden="true" /> Odustani</>
-                                                        : <><Star size={14} aria-hidden="true" /> Ocijeni</>}
+                                                        : <><Star size={14} aria-hidden="true" fill="currentColor" /> Ocijeni</>}
                                                 </button>
                                             )
                                         )}
