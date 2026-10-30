@@ -327,12 +327,6 @@ const KlijentProfil = ({ user, isActive = true }) => {
                         Kupci će vidjeti ovo radno vrijeme i da li je vaš objekat trenutno otvoren.
                     </p>
 
-                    {jeValidnaKoordinata(profil.lat) && jeValidnaKoordinata(profil.lng) && (
-                        <p className="klijent-profil-hint">
-                            Koordinate: {profil.lat.toFixed(6)}, {profil.lng.toFixed(6)}
-                        </p>
-                    )}
-
                     {poruka && <p className="klijent-profil-message ok">{poruka}</p>}
                     {greska && <p className="klijent-profil-message err">{String(greska)}</p>}
 
