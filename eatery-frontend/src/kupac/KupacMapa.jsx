@@ -336,7 +336,7 @@ const KupacMapa = ({ onIzaberiRestoran, onBrojUBlizini }) => {
 
                                 return (
                                     <li
-                                        className={jeFokusiran ? 'kupac-map-restaurant-card focused' : 'kupac-map-restaurant-card'}
+                                        className={`kupac-map-restaurant-card${status.open === false ? ' closed' : ''}${jeFokusiran ? ' focused' : ''}`}
                                         key={restoran.id}
                                     >
                                         <span className="map-card-icon" aria-hidden="true"><Utensils size={22} /></span>
