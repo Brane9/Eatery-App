@@ -207,6 +207,8 @@ public class KupacService {
             dto.setAdresaDostave(n.getAdresaDostave());
             dto.setVrijemeKreiranja(n.getVrijemeIDatum());
             dto.setPin(n.getPin());
+            dto.setPreuzimanjeOd(n.getPreuzimanjeOd());
+            dto.setPreuzimanjeDo(n.getPreuzimanjeDo());
             if (n.getRestoran() != null) {
                 dto.setRestoranNaziv(n.getRestoran().getKorisnickoIme());
             }
@@ -216,6 +218,7 @@ public class KupacService {
                 sd.setKolicina(s.getKolicina());
                 sd.setCijena(s.getCijena());
                 sd.setNazivJela(stavkaNazivResolver.naziv(s, katalog));
+                sd.setTipStavke(s.getTipStavke());
                 return sd;
             }).toList());
             return dto;

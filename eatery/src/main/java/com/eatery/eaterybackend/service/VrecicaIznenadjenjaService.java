@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import com.eatery.eaterybackend.dto.RestoranOcjenaDTO;
+import com.eatery.eaterybackend.entity.KlijentEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -23,20 +25,34 @@ public class VrecicaIznenadjenjaService {
     private final KorisnikRepository korisnikRepository;
     private final PreuzimanjeVreciceService preuzimanjeVreciceService;
     private final KorisnikPristupService korisnikPristupService;
+    private final RecenzijaService recenzijaService;
 
     public VrecicaIznenadjenjaService(VrecicaIznenadjenjaRepository vrecicaRepository,
                                       KorisnikRepository korisnikRepository,
                                       PreuzimanjeVreciceService preuzimanjeVreciceService,
-                                      KorisnikPristupService korisnikPristupService) {
+                                      KorisnikPristupService korisnikPristupService,
+                                      RecenzijaService recenzijaService) {
         this.vrecicaRepository = vrecicaRepository;
         this.korisnikRepository = korisnikRepository;
         this.preuzimanjeVreciceService = preuzimanjeVreciceService;
         this.korisnikPristupService = korisnikPristupService;
+        this.recenzijaService = recenzijaService;
     }
 
     @Transactional(readOnly = true)
     public List<VrecicaIznenadjenjaEntity> getAktivne() {
-        return vrecicaRepository.findByAktivnaTrueAndKolicinaGreaterThan(0);
+        return vrecicaRepository.findByAktivnaTrueAndKolicinaGreaterThan(0)
+                .stream()
+                .peek(v -> {
+                    if (v.getRestoran() instanceof KlijentEntity restoran) {
+                        RestoranOcjenaDTO ocjena =
+                                recenzijaService.ocjenaZaRestoran(restoran.getId());
+
+                        restoran.setProsjecnaOcjena(ocjena.getProsjecnaOcjena());
+                        restoran.setUkupanBrojOcjena(ocjena.getUkupanBrojOcjena());
+                    }
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
