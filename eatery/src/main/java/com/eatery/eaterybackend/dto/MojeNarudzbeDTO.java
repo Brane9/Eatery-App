@@ -27,5 +27,6 @@ public class MojeNarudzbeDTO {
         private String nazivJela;
         private Integer kolicina;
         private BigDecimal cijena;
+        private String tipStavke;
     }
 }
