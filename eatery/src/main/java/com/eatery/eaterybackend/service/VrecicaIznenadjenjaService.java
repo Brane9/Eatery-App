@@ -3,6 +3,8 @@ package com.eatery.eaterybackend.service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import com.eatery.eaterybackend.dto.RestoranOcjenaDTO;
 import com.eatery.eaterybackend.entity.KlijentEntity;
@@ -40,19 +42,73 @@ public class VrecicaIznenadjenjaService {
     }
 
     @Transactional(readOnly = true)
-    public List<VrecicaIznenadjenjaEntity> getAktivne() {
-        return vrecicaRepository.findByAktivnaTrueAndKolicinaGreaterThan(0)
-                .stream()
-                .peek(v -> {
-                    if (v.getRestoran() instanceof KlijentEntity restoran) {
-                        RestoranOcjenaDTO ocjena =
-                                recenzijaService.ocjenaZaRestoran(restoran.getId());
+    public List<VrecicaIznenadjenjaEntity> getAktivne(Double lat, Double lng) {
 
-                        restoran.setProsjecnaOcjena(ocjena.getProsjecnaOcjena());
-                        restoran.setUkupanBrojOcjena(ocjena.getUkupanBrojOcjena());
-                    }
-                })
-                .toList();
+        List<VrecicaIznenadjenjaEntity> vrecice = new ArrayList<>(
+                vrecicaRepository.findByAktivnaTrueAndKolicinaGreaterThan(0)
+        );
+
+        vrecice.forEach(v -> {
+            if (v.getRestoran() instanceof KlijentEntity restoran) {
+                RestoranOcjenaDTO ocjena =
+                        recenzijaService.ocjenaZaRestoran(restoran.getId());
+
+                restoran.setProsjecnaOcjena(ocjena.getProsjecnaOcjena());
+                restoran.setUkupanBrojOcjena(ocjena.getUkupanBrojOcjena());
+            }
+        });
+
+        // Sortiranje se radi samo ako su dostupne obje koordinate kupca
+        if (lat != null && lng != null) {
+            vrecice.sort(Comparator.comparingDouble(v ->
+                    izracunajUdaljenostDoRestorana(v, lat, lng)
+            ));
+        }
+
+        return vrecice;
+    }
+
+    private double izracunajUdaljenostDoRestorana(
+            VrecicaIznenadjenjaEntity vrecica,
+            double kupacLat,
+            double kupacLng) {
+
+        if (!(vrecica.getRestoran() instanceof KlijentEntity restoran)
+                || restoran.getLat() == null
+                || restoran.getLng() == null) {
+
+            // Restorani bez koordinata ne mogu imati izračunatu udaljenost,
+            // pa im dodjeljujemo beskonačnu vrijednost kako bi njihove
+            // vrećice bile prikazane na kraju liste prilikom sortiranja
+            return Double.POSITIVE_INFINITY;
+        }
+
+        return izracunajUdaljenostKm(
+                kupacLat,
+                kupacLng,
+                restoran.getLat(),
+                restoran.getLng()
+        );
+    }
+
+    private double izracunajUdaljenostKm(
+            double lat1, double lon1,
+            double lat2, double lon2) {
+
+        final int R = 6371;
+
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2)
+                * Math.sin(lonDistance / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
     }
 
     @Transactional(readOnly = true)

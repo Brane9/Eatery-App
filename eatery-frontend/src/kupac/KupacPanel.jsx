@@ -106,6 +106,7 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
     const [narudzbaGreska, setNarudzbaGreska] = useState('');
     const [slanjeNarudzbe, setSlanjeNarudzbe] = useState(false);
     const [blizina, setBlizina] = useState({ broj: null, ucitavanje: true, imaLokaciju: false });
+    const [lokacijaKupca, setLokacijaKupca] = useState({ lokacija: null, ucitano: false });
 
     useEffect(() => {
         API.get('/kupac/restorani')
@@ -678,11 +679,19 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                         )}
 
                         <section className="hero-vrecice-wrapper" id="vrecice">
-                            <HeroVrecice onDodajUVrecicu={rukujDodavanjemVrecice} />
+                            <HeroVrecice
+                                onDodajUVrecicu={rukujDodavanjemVrecice}
+                                lokacija={lokacijaKupca.lokacija}
+                                lokacijaUcitana={lokacijaKupca.ucitano}
+                            />
                         </section>
 
                         <section className="map-section" id="mapa">
-                            <KupacMapa onIzaberiRestoran={izaberiRestoran} onBrojUBlizini={setBlizina} />
+                            <KupacMapa
+                                onIzaberiRestoran={izaberiRestoran}
+                                onBrojUBlizini={setBlizina}
+                                onLokacijaPromijenjena={(podaci) => setLokacijaKupca(podaci)}
+                            />
                         </section>
                     </>
                 )}

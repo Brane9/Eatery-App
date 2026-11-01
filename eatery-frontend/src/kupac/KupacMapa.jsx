@@ -90,7 +90,11 @@ const formatUdaljenost = (km) => (km != null ? Number(km).toFixed(1) : '0.0');
 // GLAVNA KOMPONENTA
 // =========================================================
 
-const KupacMapa = ({ onIzaberiRestoran, onBrojUBlizini }) => {
+const KupacMapa = ({
+    onIzaberiRestoran,
+    onBrojUBlizini,
+    onLokacijaPromijenjena
+}) => {
     const [kupacLokacija, setKupacLokacija] = useState(null);
 
     const [restorani, setRestorani] = useState([]);
@@ -180,13 +184,30 @@ const KupacMapa = ({ onIzaberiRestoran, onBrojUBlizini }) => {
     }, [kupacLokacija, lokacijaAktivna]);
 
     useEffect(() => {
-        if (!onBrojUBlizini) return;
-        onBrojUBlizini({
-            broj: lokacijaAktivna ? restorani.length : null,
-            ucitavanje: loadingLokacije || (lokacijaAktivna && loadingRestorana),
-            imaLokaciju: lokacijaAktivna
-        });
-    }, [restorani.length, loadingLokacije, loadingRestorana, lokacijaAktivna, onBrojUBlizini]);
+        if (onBrojUBlizini) {
+            onBrojUBlizini({
+                broj: lokacijaAktivna ? restorani.length : null,
+                ucitavanje: loadingLokacije || (lokacijaAktivna && loadingRestorana),
+                imaLokaciju: lokacijaAktivna
+            });
+        }
+
+        if (onLokacijaPromijenjena) {
+            // Prosljeđivanje lokacije i statusa učitavanja roditeljskoj komponenti
+            onLokacijaPromijenjena({
+                lokacija: kupacLokacija,
+                ucitano: !loadingLokacije
+            });
+        }
+    }, [
+        restorani.length,
+        loadingLokacije,
+        loadingRestorana,
+        lokacijaAktivna,
+        kupacLokacija,
+        onBrojUBlizini,
+        onLokacijaPromijenjena
+    ]);
 
     // 3. OTVORI RESTORAN
     const otvoriRestoran = (restoran) => {
