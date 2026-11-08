@@ -101,6 +101,8 @@ const KupacMapa = ({
     const [loadingLokacije, setLoadingLokacije] = useState(true);
     const [loadingRestorana, setLoadingRestorana] = useState(false);
     const [greska, setGreska] = useState('');
+    const [greskaRestorana, setGreskaRestorana] = useState('');
+    const [brojPokusaja, setBrojPokusaja] = useState(0);
     const [lokacijaAktivna, setLokacijaAktivna] = useState(false);
 
     const [pretraga, setPretraga] = useState('');
@@ -162,6 +164,7 @@ const KupacMapa = ({
         }
 
         setLoadingRestorana(true);
+        setGreskaRestorana('');
 
         API.get('/restorani/u-blizini', {
             params: {
@@ -176,12 +179,12 @@ const KupacMapa = ({
             .catch((err) => {
                 console.error('Greška pri dohvatanju restorana:', err);
                 setRestorani([]);
-                setGreska('Nije moguće učitati restorane u blizini.');
+                setGreskaRestorana('Nije moguće učitati restorane u blizini.');
             })
             .finally(() => {
                 setLoadingRestorana(false);
             });
-    }, [kupacLokacija, lokacijaAktivna]);
+    }, [kupacLokacija, lokacijaAktivna, brojPokusaja]);
 
     useEffect(() => {
         if (onBrojUBlizini) {
@@ -332,19 +335,42 @@ const KupacMapa = ({
                                 </button>
                             </div>
                         </div>
-                    ) : prikazaniRestorani.length === 0 ? (
-                        <div className="kupac-map-empty">
-                            <span className="kupac-map-empty-icon" aria-hidden="true"><Utensils size={22} /></span>
-                            <div>
-                                <h3>{restorani.length === 0 ? 'Nema restorana u vašoj blizini' : 'Nema rezultata'}</h3>
-                                <p>
-                                    {restorani.length === 0
-                                        ? `Trenutno nema registrovanih restorana u krugu od ${RADIJUS_KM} km.`
-                                        : 'Pokušajte s drugim pojmom ili uklonite filter.'}
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
+                    ) : greskaRestorana ? (
+                          <div className="kupac-map-empty">
+                              <span className="kupac-map-empty-icon" aria-hidden="true">
+                                  <Utensils size={22} />
+                              </span>
+                              <div>
+                                  <h3>Greška pri učitavanju restorana</h3>
+                                  <p>{greskaRestorana}</p>
+                                  <button
+                                      type="button"
+                                      className="map-popup-button"
+                                      onClick={() => setBrojPokusaja(prev => prev + 1)}
+                                  >
+                                      Pokušaj ponovo
+                                  </button>
+                              </div>
+                          </div>
+                      ) : prikazaniRestorani.length === 0 ? (
+                          <div className="kupac-map-empty">
+                              <span className="kupac-map-empty-icon" aria-hidden="true">
+                                  <Utensils size={22} />
+                              </span>
+                              <div>
+                                  <h3>
+                                      {restorani.length === 0
+                                          ? 'Nema restorana u vašoj blizini'
+                                          : 'Nema rezultata'}
+                                  </h3>
+                                  <p>
+                                      {restorani.length === 0
+                                          ? `Trenutno nema registrovanih restorana u krugu od ${RADIJUS_KM} km.`
+                                          : 'Pokušajte s drugim pojmom ili uklonite filter.'}
+                                  </p>
+                              </div>
+                          </div>
+                      ) : (
                         <ul className="kupac-map-restaurant-grid">
                             {prikazaniRestorani.map((restoran) => {
                                 const numericRating = Number(restoran.prosjecnaOcjena) || 0;
