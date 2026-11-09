@@ -8,6 +8,7 @@ function AdminPanel({ user, onLogout }) {
 
     const [zahtjevi, setZahtjevi] = useState([]);
     const [zahtjeviLoading, setZahtjeviLoading] = useState(true);
+    const [greskaZahtjeva, setGreskaZahtjeva] = useState('');
     const [obradaId, setObradaId] = useState(null);
 
     const [oglasi, setOglasi] = useState([]);
@@ -38,12 +39,20 @@ function AdminPanel({ user, onLogout }) {
 
     const ucitajZahtjeve = useCallback(async () => {
         try {
-            setZahtjeviLoading(true);
+            setGreskaZahtjeva('');
+            setPoruka('');
+
             const res = await API.get('/admin/zahtjevi');
-            setZahtjevi(res.data);
+
+            setPoruka('');
+            setZahtjevi(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
-            setPoruka(`Greška: ${porukaGreske}`);
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
+            setGreskaZahtjeva(porukaGreske);
         } finally {
             setZahtjeviLoading(false);
         }
@@ -103,10 +112,17 @@ function AdminPanel({ user, onLogout }) {
     const ucitajZahtjeveSifra = useCallback(async () => {
         try {
             setZahtjeviSifraLoading(true);
+
             const res = await API.get('/admin/zahtjevi-sifra');
+
+            setPoruka('');
             setZahtjeviSifra(res.data);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
             setPoruka(`Greška: ${porukaGreske}`);
         } finally {
             setZahtjeviSifraLoading(false);
@@ -748,12 +764,30 @@ function AdminPanel({ user, onLogout }) {
                     <p>{heading.text}</p>
                 </div>
 
-                {poruka && <div className="admin-alert">{poruka}</div>}
+                {poruka && (
+                    <div className={`admin-alert ${poruka.startsWith('Greška:') ? 'admin-alert-error' : ''}`}>
+                        {poruka}
+                    </div>
+                )}
 
                 {sekcija === 'zahtjevi' && (
                     <div className="admin-card">
                         {zahtjeviLoading ? (
-                            <div className="admin-inline-loading">Učitavanje zahtjeva...</div>
+                            <div className="admin-inline-loading">
+                                Učitavanje zahtjeva...
+                            </div>
+                        ) : greskaZahtjeva ? (
+                            <div className="admin-empty">
+                                <h3>Zahtjeve nije moguće učitati</h3>
+                                <p>{greskaZahtjeva}</p>
+                                <button
+                                    type="button"
+                                    className="admin-approve"
+                                    onClick={ucitajZahtjeve}
+                                >
+                                    Pokušaj ponovo
+                                </button>
+                            </div>
                         ) : zahtjevi.length === 0 ? (
                             <div className="admin-empty">
                                 <h3>Nema novih zahtjeva</h3>
