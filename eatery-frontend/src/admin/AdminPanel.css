@@ -525,3 +525,23 @@
         display: none;
     }
 }
+
+.admin-load-error {
+    padding: 24px;
+    margin: 16px 0;
+    text-align: center;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+}
+
+.admin-load-error h3 {
+    margin: 0 0 8px;
+    color: #b91c1c;
+}
+
+.admin-load-error p {
+    margin: 0 0 16px;
+    color: #b91c1c;
+}
