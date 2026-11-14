@@ -1689,19 +1689,17 @@ idiNaSekciju("analitika")
         Spremno
     </button>
 
-    {/* DOSTAVLJENO */}
-    <button
-        type="button"
-        className={
-            status === "DOSTAVLJENO"
-                ? "status-button selected"
-                : "status-button"
-        }
-        disabled={status !== "SPREMNO"}
-        onClick={() => PromijeniStatusNarudzbe(n.id, "DOSTAVLJENO")}
-    >
-        Dostavljeno
-    </button>
+    {!n.stavke?.some(
+        stavka => stavka.tipStavke?.toUpperCase() === "VRECICA"
+    ) && (
+        <button
+            className="..."
+            disabled={status !== "SPREMNO"}
+            onClick={() => PromijeniStatusNarudzbe(n.id, "DOSTAVLJENO")}
+        >
+            Dostavljeno
+        </button>
+    )}
 
     {/* OTKAŽI */}
     <button

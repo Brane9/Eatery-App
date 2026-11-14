@@ -1,11 +1,7 @@
 package com.eatery.eaterybackend.service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -214,34 +210,73 @@ public class NarudzbaService {
         }).toList();
     }
 
+
     @Transactional
     public String promjeniStatus(Long id, String status, Authentication authentication) {
         KorisnikEntity ulogovani = korisnikPristupService.zahtijevajUlogovanog(authentication);
+
         NarudzbaEntity narudzba = narudzbaRepository.findById(id)
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Narudžba sa ID " + id + " nije pronađena!"));
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST,
+                        "Narudžba sa ID " + id + " nije pronađena!"));
 
-        if (narudzba.getRestoran() == null || !narudzba.getRestoran().getId().equals(ulogovani.getId())) {
+        if (narudzba.getRestoran() == null
+                || !narudzba.getRestoran().getId().equals(ulogovani.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    "Nemate dozvolu da menjate status narudžbe koja ne pripada vašem restoranu!");
+                    "Nemate dozvolu da mijenjate status narudžbe koja ne pripada vašem restoranu!");
         }
 
-        String trenutniStatus = narudzba.getStatus() != null ? narudzba.getStatus().toUpperCase() : "";
-        String noviStatus = status != null ? status.toUpperCase() : "";
+        String trenutniStatus = narudzba.getStatus() != null
+                ? narudzba.getStatus().trim().toUpperCase()
+                : "";
 
-        if ("DOSTAVLJENO".equals(trenutniStatus) || "PREUZETO".equals(trenutniStatus)
-                || "OTKAZANO".equals(trenutniStatus) || "OTKAZANA".equals(trenutniStatus)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Status zavrešene narudžbe se više ne može mijenjati!");
+        String noviStatus = status != null
+                ? status.trim().toUpperCase()
+                : "";
+
+        if (noviStatus.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Novi status nije naveden!");
         }
-        if ("SPREMNO".equals(trenutniStatus) && "U_PRIPREMI".equals(noviStatus)) {
+
+
+        Set<String> dozvoljeniStatusi = Set.of(
+                "U_PRIPREMI", "SPREMNO", "DOSTAVLJENO", "OTKAZANA"
+        );
+
+        if (!dozvoljeniStatusi.contains(noviStatus)) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "Narudžba koja je označena kao SPREMNO ne može se vratiti u pripremu!");
+                    "Nepoznat ili nedozvoljen status narudžbe: " + noviStatus);
+        }
+
+        Map<String, Set<String>> dozvoljeniPrelazi = Map.of(
+                "KREIRANA", Set.of("U_PRIPREMI", "OTKAZANA"),
+                "ZAPRIMLJENO", Set.of("U_PRIPREMI", "OTKAZANA"),
+                "U_PRIPREMI", Set.of("SPREMNO", "OTKAZANA"),
+                "SPREMNO", Set.of("DOSTAVLJENO", "OTKAZANA")
+        );
+
+        if (!dozvoljeniPrelazi.getOrDefault(trenutniStatus, Set.of()).contains(noviStatus)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Nije dozvoljena promjena statusa iz " + trenutniStatus + " u " + noviStatus + "!");
         }
 
         if (narudzba.getSifra() == null || narudzba.getSifra().isEmpty()) {
             narudzba.setSifra("ORD-" + System.currentTimeMillis());
         }
+
+        boolean sadrziVrecicu = stavkaNarudzbeRepository
+                .findByIdNarudzbe(id)
+                .stream()
+                .anyMatch(stavka -> "VRECICA".equalsIgnoreCase(stavka.getTipStavke()));
+
+        if (sadrziVrecicu && "DOSTAVLJENO".equals(noviStatus)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Vrećica se može označiti kao preuzeta isključivo unosom ispravnog PIN-a!");
+        }
+
         narudzba.setStatus(noviStatus);
         narudzbaRepository.save(narudzba);
-        return "Status uspešno promenjen u: " + noviStatus;
+
+        return "Status uspješno promijenjen u: " + noviStatus;
     }
+
 }
