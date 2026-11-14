@@ -28,8 +28,11 @@ public class VrecicaIznenadjenjaController {
     }
 
     @GetMapping("/aktivne")
-    public ResponseEntity<?> getAktivneVrecice() {
-        return ResponseEntity.ok(vrecicaIznenadjenjaService.getAktivne());
+    public ResponseEntity<?> getAktivneVrecice(
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
+
+        return ResponseEntity.ok(vrecicaIznenadjenjaService.getAktivne(lat, lng));
     }
 
     @GetMapping("/restoran/{restoranId}")

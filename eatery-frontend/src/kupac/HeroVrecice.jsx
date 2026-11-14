@@ -4,15 +4,31 @@ import API from '../api';
 import { statusPreuzimanjaVrecice } from './radnoVrijeme';
 import './HeroVrecice.css';
 
-function HeroVrecice({ onDodajUVrecicu }) {
+function HeroVrecice({
+    onDodajUVrecicu,
+    lokacija,
+    lokacijaUcitana
+}) {
     const [vrecice, setVrecice] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Učitavanje aktivnih vrećica sa backenda
+    // Učitavanje aktivnih Vrećica uz sortiranje po udaljenosti kupca
     useEffect(() => {
+        // Sačekaj da se završi provjera lokacije kupca
+        if (!lokacijaUcitana) return;
+
         let isMounted = true;
 
-        API.get('/vrecice/aktivne')
+        setLoading(true);
+
+        const params = lokacija
+            ? {
+                lat: lokacija.lat,
+                lng: lokacija.lng
+            }
+            : {};
+
+        API.get('/vrecice/aktivne', { params })
             .then((res) => {
                 if (isMounted) {
                     setVrecice(Array.isArray(res.data) ? res.data : []);
@@ -28,9 +44,9 @@ function HeroVrecice({ onDodajUVrecicu }) {
             });
 
         return () => {
-            isMounted = false; // Sprječava update stanja ako se komponenta unmount-uje
+            isMounted = false;
         };
-    }, []);
+    }, [lokacija, lokacijaUcitana]);
 
     return (
         <section className="surprise-section" aria-labelledby="vrecice-naslov">

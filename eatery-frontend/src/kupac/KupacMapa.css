@@ -820,3 +820,16 @@
     text-decoration: underline;
     text-underline-offset: 3px;
 }
+
+.kupac-map-empty .map-popup-button {
+    max-width: 180px;
+}
+
+.kupac-map-empty {
+    flex-wrap: wrap;
+}
+
+.kupac-map-empty > div {
+    flex: 1;
+    min-width: 180px;
+}

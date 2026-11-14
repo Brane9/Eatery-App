@@ -7,7 +7,7 @@ import RecenzijeLista from '../components/RecenzijeLista';
 import API from '../api';
 import { pretplatiSeNaTopic, odsviraliObavjestenje } from '../ws';
 import { formatTerminNarudzbe } from '../kupac/radnoVrijeme';
-import { Bell, ChartNoAxesColumn, ChevronRight, CircleX, ClipboardList, Gift, House, Leaf, MapPin, PackageCheck, RefreshCw, Star, Utensils, UserRound } from 'lucide-react';
+import { Bell, ChartNoAxesColumn, ChevronRight, CircleX, ClipboardList, Gift, House, Leaf, MapPin, PackageCheck, RefreshCw, Star, Utensils, UserRound, LogOut } from 'lucide-react';
 
 const normalizujStatusNarudzbe = (status) =>
     String(status || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
@@ -841,11 +841,7 @@ const PromijeniStatusNarudzbe = async (narudzbaId, noviStatus) => {
         (narudzba) => !["DOSTAVLJENO", "PREUZETO", "OTKAZANA", "OTKAZANO", "ODBIJENA"].includes(normalizujStatusNarudzbe(narudzba.status))
     );
     const prvaNarudzbaZaPaznju = narudzbeZaPaznju[0];
-    const statusPrveNarudzbe = prvaNarudzbaZaPaznju?.status?.toUpperCase();
-    const korakPrveNarudzbe =
-        statusPrveNarudzbe === "U_PRIPREMI" ? 1 :
-        statusPrveNarudzbe === "SPREMNO" ? 2 :
-        statusPrveNarudzbe === "DOSTAVLJENO" || statusPrveNarudzbe === "PREUZETO" ? 3 : 0;
+    const prikazaneNarudzbeZaPaznju = narudzbeZaPaznju.slice(0, 3);
 
     const ukupnoStranicaNarudzbi = Math.max(
         1,
@@ -1118,14 +1114,14 @@ idiNaSekciju("analitika")
                     </nav>
 
                     <div className="navbar-actions">
-
                         {onLogout && (
                             <button
-                                className="navbar-logout"
+                                className="sidebar-logout"
                                 type="button"
                                 onClick={onLogout}
                             >
-                                Odjava
+                                <LogOut size={18} aria-hidden="true" />
+                                <span>Odjava</span>
                             </button>
                         )}
                     </div>
@@ -1230,31 +1226,55 @@ idiNaSekciju("analitika")
 
                             </div>
 
-                            {prvaNarudzbaZaPaznju ? (
-                                <article className="home-order-preview">
-                                    <div className="home-order-topline">
-                                        <div className="home-order-reference">
-                                            <span>NARUDŽBA</span>
-                                            <strong>#{prvaNarudzbaZaPaznju.id}</strong>
-                                            <span className="home-order-status">{(prvaNarudzbaZaPaznju.status || "Zaprimljeno").replaceAll("_", " ")}</span>
-                                        </div>
-                                        <strong className="home-order-price">{Number(prvaNarudzbaZaPaznju.ukupnaCijena || 0).toFixed(2)} KM</strong>
-                                    </div>
-                                    <div className="home-order-progress" aria-label="Napredak narudžbe">
-                                        {["Zaprimljeno", "U pripremi", "Spremno", "Dostavljeno"].map((korak, index) => (
-                                            <div className={`home-progress-step${index <= korakPrveNarudzbe ? " reached" : ""}${index < korakPrveNarudzbe ? " connected" : ""}${index === korakPrveNarudzbe ? " current" : ""}`} key={korak}>
-                                                <span aria-hidden="true" />
-                                                <small>{korak}</small>
+                            {prikazaneNarudzbeZaPaznju.length > 0 ? (
+                                prikazaneNarudzbeZaPaznju.map((narudzba) => {
+                                    const status = narudzba.status?.toUpperCase();
+
+                                    const korak =
+                                        status === "U_PRIPREMI" ? 1 :
+                                        status === "SPREMNO" ? 2 :
+                                        status === "DOSTAVLJENO" || status === "PREUZETO" ? 3 : 0;
+
+                                    return (
+                                        <article className="home-order-preview" key={narudzba.id}>
+                                            <div className="home-order-topline">
+                                                <div className="home-order-reference">
+                                                    <span>NARUDŽBA</span>
+                                                    <strong>#{narudzba.id}</strong>
+                                                    <span className="home-order-status">
+                                                        {(narudzba.status || "Zaprimljeno").replaceAll("_", " ")}
+                                                    </span>
+                                                </div>
+
+                                                <strong className="home-order-price">
+                                                    {Number(narudzba.ukupnaCijena || 0).toFixed(2)} KM
+                                                </strong>
                                             </div>
-                                        ))}
-                                    </div>
-                                    <div className="home-order-bottomline">
-                                        <span><MapPin aria-hidden="true" /> {prvaNarudzbaZaPaznju.adresaDostave || "Adresa nije navedena"}</span>
-                                        <button type="button" onClick={() => idiNaNarudzbu(prvaNarudzbaZaPaznju.id)}>
-                                            Otvori narudžbu <ChevronRight aria-hidden="true" />
-                                        </button>
-                                    </div>
-                                </article>
+
+                                            <div className="home-order-progress" aria-label="Napredak narudžbe">
+                                                {["Zaprimljeno", "U pripremi", "Spremno", "Dostavljeno"].map((korakNaziv, index) => (
+                                                    <div
+                                                        className={`home-progress-step${index <= korak ? " reached" : ""}${index < korak ? " connected" : ""}${index === korak ? " current" : ""}`}
+                                                        key={korakNaziv}
+                                                    >
+                                                        <span aria-hidden="true" />
+                                                        <small>{korakNaziv}</small>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="home-order-bottomline">
+                                                <span>
+                                                    <MapPin aria-hidden="true" /> {narudzba.adresaDostave || "Adresa nije navedena"}
+                                                </span>
+
+                                                <button type="button" onClick={() => idiNaNarudzbu(narudzba.id)}>
+                                                    Otvori narudžbu <ChevronRight aria-hidden="true" />
+                                                </button>
+                                            </div>
+                                        </article>
+                                    );
+                                })
                             ) : (
                                 <div className="home-order-empty">
                                     <PackageCheck aria-hidden="true" />
@@ -1669,19 +1689,17 @@ idiNaSekciju("analitika")
         Spremno
     </button>
 
-    {/* DOSTAVLJENO */}
-    <button
-        type="button"
-        className={
-            status === "DOSTAVLJENO"
-                ? "status-button selected"
-                : "status-button"
-        }
-        disabled={status !== "SPREMNO"}
-        onClick={() => PromijeniStatusNarudzbe(n.id, "DOSTAVLJENO")}
-    >
-        Dostavljeno
-    </button>
+    {!n.stavke?.some(
+        stavka => stavka.tipStavke?.toUpperCase() === "VRECICA"
+    ) && (
+        <button
+            className="..."
+            disabled={status !== "SPREMNO"}
+            onClick={() => PromijeniStatusNarudzbe(n.id, "DOSTAVLJENO")}
+        >
+            Dostavljeno
+        </button>
+    )}
 
     {/* OTKAŽI */}
     <button

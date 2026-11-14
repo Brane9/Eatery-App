@@ -2960,9 +2960,6 @@
 
 .nav-order-badge, .navbar-actions { flex-shrink: 0; }
 
-.navbar-logout { transition: border-color 160ms ease, background 160ms ease, color 160ms ease; }
-.navbar-logout:hover { background: #f7f8f7; color: #0f766e; }
-
 @media (max-width: 1100px) {
     .restoran-navbar-inner { gap: 12px; padding-right: 20px; padding-left: 20px; }
     .restoran-nav-link { gap: 6px; padding-right: 9px; padding-left: 9px; font-size: 13px; }
@@ -3167,20 +3164,6 @@
 
 .restaurant-id-box span { color: #9eb9b4; }
 .restaurant-id-box strong { color: #ffffff; }
-
-.navbar-logout {
-    width: 100%;
-    border-color: rgba(255, 255, 255, 0.15);
-    background: transparent;
-    color: #e0eeeb;
-    text-align: center;
-}
-
-.navbar-logout:hover {
-    border-color: rgba(255, 255, 255, 0.28);
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
-}
 
 .restoran-brand:focus-visible,
 .restoran-nav-link:focus-visible,
@@ -3588,8 +3571,6 @@ main > .restaurant-section + .restaurant-section {
 .restoran-nav-link.active::before { background: #73e3d7; }
 .nav-order-badge { background: #8ce8df; color: #124e63; }
 .navbar-actions { border-color: rgba(231, 250, 251, 0.16); }
-.navbar-logout { border-color: rgba(231, 250, 251, 0.24); color: #e1f0f2; }
-.navbar-logout:hover { border-color: rgba(231, 250, 251, 0.4); background: rgba(255, 255, 255, 0.08); color: #ffffff; }
 .restoran-content { gap: 18px; padding: 26px 30px 76px; background: #f3f7f8; }
 .restaurant-welcome h1 { font-size: clamp(25px, 2.5vw, 32px); }
 .home-overview { gap: 18px; }
@@ -3837,4 +3818,26 @@ main > .restaurant-section + .restaurant-section {
     .menu-item-top { align-items: flex-start; flex-direction: column; gap: 4px; }
     .menu-item-top h4 { font-size: 14px; }
     .menu-item-top strong { font-size: 13px; }
+}
+
+.restoran-navbar .sidebar-logout {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 13px;
+    background: white;
+    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.restoran-navbar .sidebar-logout:hover {
+    background: #f1f5f4;
+    color: var(--text);
 }
