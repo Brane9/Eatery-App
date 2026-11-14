@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     MapContainer,
     TileLayer,
@@ -184,24 +184,53 @@ const KupacMapa = ({
             .finally(() => {
                 setLoadingRestorana(false);
             });
-    }, [kupacLokacija, lokacijaAktivna, brojPokusaja]);
+    }, [kupacLokacija?.lat, kupacLokacija?.lng, lokacijaAktivna, brojPokusaja]);
+
+    const prethodniPodaciRef = useRef({
+        broj: undefined,
+        ucitavanje: undefined,
+        imaLokaciju: undefined,
+        lokacija: undefined,
+        ucitano: undefined
+    });
 
     useEffect(() => {
-        if (onBrojUBlizini) {
-            onBrojUBlizini({
-                broj: lokacijaAktivna ? restorani.length : null,
-                ucitavanje: loadingLokacije || (lokacijaAktivna && loadingRestorana),
-                imaLokaciju: lokacijaAktivna
+        const broj = lokacijaAktivna ? restorani.length : null;
+        const ucitavanje = loadingLokacije || (lokacijaAktivna && loadingRestorana);
+        const imaLokaciju = lokacijaAktivna;
+        const ucitano = !loadingLokacije;
+
+        if (
+            onBrojUBlizini &&
+            (
+                prethodniPodaciRef.current.broj !== broj ||
+                prethodniPodaciRef.current.ucitavanje !== ucitavanje ||
+                prethodniPodaciRef.current.imaLokaciju !== imaLokaciju
+            )
+        ) {
+            onBrojUBlizini({ broj, ucitavanje, imaLokaciju });
+        }
+
+        if (
+            onLokacijaPromijenjena &&
+            (
+                prethodniPodaciRef.current.lokacija !== kupacLokacija ||
+                prethodniPodaciRef.current.ucitano !== ucitano
+            )
+        ) {
+            onLokacijaPromijenjena({
+                lokacija: kupacLokacija,
+                ucitano
             });
         }
 
-        if (onLokacijaPromijenjena) {
-            // Prosljeđivanje lokacije i statusa učitavanja roditeljskoj komponenti
-            onLokacijaPromijenjena({
-                lokacija: kupacLokacija,
-                ucitano: !loadingLokacije
-            });
-        }
+        prethodniPodaciRef.current = {
+            broj,
+            ucitavanje,
+            imaLokaciju,
+            lokacija: kupacLokacija,
+            ucitano
+        };
     }, [
         restorani.length,
         loadingLokacije,
