@@ -7,7 +7,7 @@ import RecenzijeLista from '../components/RecenzijeLista';
 import API from '../api';
 import { pretplatiSeNaTopic, odsviraliObavjestenje } from '../ws';
 import { formatTerminNarudzbe } from '../kupac/radnoVrijeme';
-import { Bell, ChartNoAxesColumn, ChevronRight, CircleX, ClipboardList, Gift, House, Leaf, MapPin, PackageCheck, RefreshCw, Star, Utensils, UserRound } from 'lucide-react';
+import { Bell, ChartNoAxesColumn, ChevronRight, CircleX, ClipboardList, Gift, House, Leaf, MapPin, PackageCheck, RefreshCw, Star, Utensils, UserRound, LogOut } from 'lucide-react';
 
 const normalizujStatusNarudzbe = (status) =>
     String(status || "").trim().toUpperCase().replace(/[\s-]+/g, "_");
@@ -1114,14 +1114,14 @@ idiNaSekciju("analitika")
                     </nav>
 
                     <div className="navbar-actions">
-
                         {onLogout && (
                             <button
-                                className="navbar-logout"
+                                className="sidebar-logout"
                                 type="button"
                                 onClick={onLogout}
                             >
-                                Odjava
+                                <LogOut size={18} aria-hidden="true" />
+                                <span>Odjava</span>
                             </button>
                         )}
                     </div>

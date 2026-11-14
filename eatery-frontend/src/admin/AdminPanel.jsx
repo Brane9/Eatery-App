@@ -8,14 +8,17 @@ function AdminPanel({ user, onLogout }) {
 
     const [zahtjevi, setZahtjevi] = useState([]);
     const [zahtjeviLoading, setZahtjeviLoading] = useState(true);
+    const [greskaZahtjeva, setGreskaZahtjeva] = useState('');
     const [obradaId, setObradaId] = useState(null);
 
     const [oglasi, setOglasi] = useState([]);
     const [oglasiLoading, setOglasiLoading] = useState(false);
     const [brisanjeId, setBrisanjeId] = useState(null);
+    const [greskaOglasa, setGreskaOglasa] = useState('');
 
     const [korisnici, setKorisnici] = useState([]);
     const [korisniciLoading, setKorisniciLoading] = useState(false);
+    const [greskaKorisnika, setGreskaKorisnika] = useState('');
     const [pretraga, setPretraga] = useState('');
     const [aktiviranFilter, setAktiviranFilter] = useState('');
     const [suspendovanFilter, setSuspendovanFilter] = useState('');
@@ -27,10 +30,12 @@ function AdminPanel({ user, onLogout }) {
 
     const [zahtjeviSifra, setZahtjeviSifra] = useState([]);
     const [zahtjeviSifraLoading, setZahtjeviSifraLoading] = useState(true);
+    const [greskaZahtjevaSifra, setGreskaZahtjevaSifra] = useState('');
     const [obradaSifraId, setObradaSifraId] = useState(null);
 
     const [recenzije, setRecenzije] = useState([]);
     const [recenzijeLoading, setRecenzijeLoading] = useState(false);
+    const [greskaRecenzija, setGreskaRecenzija] = useState('');
     const [brisanjeRecenzijeId, setBrisanjeRecenzijeId] = useState(null);
     const [brisanjeNalogaId, setBrisanjeNalogaId] = useState(null);
     const [profil, setProfil] = useState(null);
@@ -39,11 +44,18 @@ function AdminPanel({ user, onLogout }) {
     const ucitajZahtjeve = useCallback(async () => {
         try {
             setZahtjeviLoading(true);
+            setGreskaZahtjeva('');
+
             const res = await API.get('/admin/zahtjevi');
-            setZahtjevi(res.data);
+
+            setZahtjevi(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
-            setPoruka(`Greška: ${porukaGreske}`);
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
+            setGreskaZahtjeva(porukaGreske);
         } finally {
             setZahtjeviLoading(false);
         }
@@ -52,11 +64,18 @@ function AdminPanel({ user, onLogout }) {
     const ucitajOglase = useCallback(async () => {
         try {
             setOglasiLoading(true);
+            setGreskaOglasa('');
+
             const res = await API.get('/admin/oglasi');
-            setOglasi(res.data);
+
+            setOglasi(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
-            setPoruka(`Greška: ${porukaGreske}`);
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
+            setGreskaOglasa(porukaGreske);
         } finally {
             setOglasiLoading(false);
         }
@@ -64,11 +83,16 @@ function AdminPanel({ user, onLogout }) {
 
     const ucitajKorisnike = useCallback(async () => {
         if (sekcija !== 'kupci' && sekcija !== 'klijenti') return;
+
         try {
+            setGreskaKorisnika('');
+
             if (korisnici.length === 0) {
                 setKorisniciLoading(true);
             }
+
             const putanja = sekcija === 'kupci' ? '/admin/kupci' : '/admin/klijenti';
+
             const res = await API.get(putanja, {
                 params: {
                     q: pretraga.trim() || undefined,
@@ -78,10 +102,15 @@ function AdminPanel({ user, onLogout }) {
                     dir
                 }
             });
+
             setKorisnici(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
-            setPoruka(`Greška: ${porukaGreske}`);
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
+            setGreskaKorisnika(porukaGreske);
         } finally {
             setKorisniciLoading(false);
         }
@@ -90,11 +119,18 @@ function AdminPanel({ user, onLogout }) {
     const ucitajRecenzije = useCallback(async () => {
         try {
             setRecenzijeLoading(true);
+            setGreskaRecenzija('');
+
             const res = await API.get('/admin/recenzije');
+
             setRecenzije(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
-            setPoruka(`Greška: ${porukaGreske}`);
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
+            setGreskaRecenzija(porukaGreske);
         } finally {
             setRecenzijeLoading(false);
         }
@@ -103,23 +139,38 @@ function AdminPanel({ user, onLogout }) {
     const ucitajZahtjeveSifra = useCallback(async () => {
         try {
             setZahtjeviSifraLoading(true);
+            setGreskaZahtjevaSifra('');
+
             const res = await API.get('/admin/zahtjevi-sifra');
-            setZahtjeviSifra(res.data);
+
+            setZahtjeviSifra(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
-            const porukaGreske = err.response?.data?.message || err.message || 'Nepoznata greška';
-            setPoruka(`Greška: ${porukaGreske}`);
+            const porukaGreske =
+                err.response?.data?.message ||
+                err.message ||
+                'Nepoznata greška';
+
+            setGreskaZahtjevaSifra(porukaGreske);
         } finally {
             setZahtjeviSifraLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        ucitajZahtjeve();
-    }, [ucitajZahtjeve]);
+        if (sekcija === 'zahtjevi') {
+            ucitajZahtjeve();
+        }
+    }, [ucitajZahtjeve, sekcija]);
+
+    useEffect(() => {
+        if (sekcija === 'sifre') {
+            ucitajZahtjeveSifra();
+        }
+    }, [ucitajZahtjeveSifra, sekcija]);
 
     useEffect(() => {
         ucitajZahtjeveSifra();
-    }, [ucitajZahtjeveSifra, sekcija]);
+    }, [ucitajZahtjeveSifra]);
 
     useEffect(() => {
         if (sekcija === 'oglasi') {
@@ -177,7 +228,6 @@ function AdminPanel({ user, onLogout }) {
             setKorisnici((prev) =>
                 prev.map((k) => (k.id === id ? { ...k, aktiviran: true } : k))
             );
-            ucitajZahtjeve();
         } catch (err) {
             const porukaGreske = err.response?.data?.message || 'Nalog nije mogao biti aktiviran.';
             setPoruka(`Greška: ${porukaGreske}`);
@@ -544,6 +594,22 @@ function AdminPanel({ user, onLogout }) {
                     <div className="admin-inline-loading">
                         {tip === 'kupci' ? 'Učitavanje kupaca...' : 'Učitavanje restorana...'}
                     </div>
+                ) : greskaKorisnika ? (
+                    <div className="admin-load-error">
+                        <h3>
+                            {tip === 'kupci'
+                                ? 'Kupce nije moguće učitati'
+                                : 'Klijente nije moguće učitati'}
+                        </h3>
+                        <p>{greskaKorisnika}</p>
+                        <button
+                            type="button"
+                            className="admin-approve"
+                            onClick={ucitajKorisnike}
+                        >
+                            Pokušaj ponovo
+                        </button>
+                    </div>
                 ) : prikazaniKorisnici.length === 0 ? (
                     <div className="admin-empty">
                         <h3>
@@ -748,12 +814,30 @@ function AdminPanel({ user, onLogout }) {
                     <p>{heading.text}</p>
                 </div>
 
-                {poruka && <div className="admin-alert">{poruka}</div>}
+                {poruka && (
+                    <div className={`admin-alert ${poruka.startsWith('Greška:') ? 'admin-alert-error' : ''}`}>
+                        {poruka}
+                    </div>
+                )}
 
                 {sekcija === 'zahtjevi' && (
                     <div className="admin-card">
                         {zahtjeviLoading ? (
-                            <div className="admin-inline-loading">Učitavanje zahtjeva...</div>
+                            <div className="admin-inline-loading">
+                                Učitavanje zahtjeva...
+                            </div>
+                        ) : greskaZahtjeva ? (
+                            <div className="admin-load-error">
+                                <h3>Zahtjeve nije moguće učitati</h3>
+                                <p>{greskaZahtjeva}</p>
+                                <button
+                                    type="button"
+                                    className="admin-approve"
+                                    onClick={ucitajZahtjeve}
+                                >
+                                    Pokušaj ponovo
+                                </button>
+                            </div>
                         ) : zahtjevi.length === 0 ? (
                             <div className="admin-empty">
                                 <h3>Nema novih zahtjeva</h3>
@@ -841,8 +925,20 @@ function AdminPanel({ user, onLogout }) {
 
                 {sekcija === 'sifre' && (
                     <div className="admin-card">
-                        {zahtjeviSifraLoading ? (
+                                               {zahtjeviSifraLoading ? (
                             <div className="admin-inline-loading">Učitavanje zahtjeva...</div>
+                        ) : greskaZahtjevaSifra ? (
+                            <div className="admin-load-error">
+                                <h3>Zahtjeve nije moguće učitati</h3>
+                                <p>{greskaZahtjevaSifra}</p>
+                                <button
+                                    type="button"
+                                    className="admin-approve"
+                                    onClick={ucitajZahtjeveSifra}
+                                >
+                                    Pokušaj ponovo
+                                </button>
+                            </div>
                         ) : zahtjeviSifra.length === 0 ? (
                             <div className="admin-empty">
                                 <h3>Nema zahtjeva za promjenu šifre</h3>
@@ -909,6 +1005,18 @@ function AdminPanel({ user, onLogout }) {
                     <div className="admin-card">
                         {recenzijeLoading ? (
                             <div className="admin-inline-loading">Učitavanje recenzija...</div>
+                        ) : greskaRecenzija ? (
+                            <div className="admin-load-error">
+                                <h3>Recenzije nije moguće učitati</h3>
+                                <p>{greskaRecenzija}</p>
+                                <button
+                                    type="button"
+                                    className="admin-approve"
+                                    onClick={ucitajRecenzije}
+                                >
+                                    Pokušaj ponovo
+                                </button>
+                            </div>
                         ) : recenzije.length === 0 ? (
                             <div className="admin-empty">
                                 <h3>Nema recenzija</h3>
@@ -970,6 +1078,18 @@ function AdminPanel({ user, onLogout }) {
                     <div className="admin-card">
                         {oglasiLoading ? (
                             <div className="admin-inline-loading">Učitavanje oglasa...</div>
+                        ) : greskaOglasa ? (
+                            <div className="admin-load-error">
+                                <h3>Oglase nije moguće učitati</h3>
+                                <p>{greskaOglasa}</p>
+                                <button
+                                    type="button"
+                                    className="admin-approve"
+                                    onClick={ucitajOglase}
+                                >
+                                    Pokušaj ponovo
+                                </button>
+                            </div>
                         ) : oglasi.length === 0 ? (
                             <div className="admin-empty">
                                 <h3>Nema oglasa</h3>

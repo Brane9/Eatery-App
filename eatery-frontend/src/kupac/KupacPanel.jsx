@@ -690,7 +690,7 @@ function KupacPanel({ user, onLogout, onUserUpdate }) {
                             <KupacMapa
                                 onIzaberiRestoran={izaberiRestoran}
                                 onBrojUBlizini={setBlizina}
-                                onLokacijaPromijenjena={(podaci) => setLokacijaKupca(podaci)}
+                                onLokacijaPromijenjena={setLokacijaKupca}
                             />
                         </section>
                     </>
